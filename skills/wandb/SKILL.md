@@ -1,5 +1,5 @@
 ---
-name: wandb-data-analysis
+name: wandb
 description: Explore and analyze W&B (Weights & Biases) projects, runs, metrics, and configs via wandb.Api for data analysis, summarization, filtering, or reporting. Use when listing projects, summarizing a project or run set, aggregating metrics, or creating W&B Reports.
 ---
 
