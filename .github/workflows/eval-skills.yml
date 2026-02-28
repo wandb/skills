@@ -1,0 +1,158 @@
+name: Evaluate Skills
+
+# Runs the WandBAgentFactory eval framework against skills in this repo
+# using the Codex agent with MCP support (wbaf-refact branch).
+
+on:
+  push:
+    branches: [main]
+    paths: ["skills/**"]
+
+  pull_request:
+    branches: [main]
+    paths: ["skills/**"]
+
+  workflow_dispatch:
+    inputs:
+      eval_config:
+        description: "Eval config in the WBAF repo (e.g. evals/codex-all.yaml)"
+        required: false
+        default: "evals/codex-all.yaml"
+        type: string
+      agent:
+        description: "Agent config to use (e.g. codex-mcp)"
+        required: false
+        default: ""
+        type: string
+
+  schedule:
+    # Weekly on Sundays at 11 PM PT (7 AM UTC Monday)
+    - cron: "0 7 * * 1"
+
+jobs:
+  eval:
+    name: Evaluate skills
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    env:
+      WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+
+    steps:
+      - name: Checkout agent-skills
+        uses: actions/checkout@v4
+        with:
+          path: agent-skills
+
+      - name: Checkout WandBAgentFactory (wbaf-refact)
+        uses: actions/checkout@v4
+        with:
+          repository: wandb/WandBAgentFactory
+          ref: wbaf-refact
+          token: ${{ secrets.WBAF_PAT }}
+          path: wbaf
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        working-directory: wbaf
+        run: uv python install
+
+      - name: Install dependencies
+        working-directory: wbaf
+        run: uv sync
+
+      - name: Copy skills into eval framework
+        run: |
+          echo "Copying skills from agent-skills into wbaf/skills/..."
+          for skill_dir in agent-skills/skills/*/; do
+            name="$(basename "$skill_dir")"
+            if [[ -f "$skill_dir/SKILL.md" ]]; then
+              # Copy into wbaf skills/ (overwrites if exists)
+              cp -r "$skill_dir" "wbaf/skills/$name"
+              echo "  $name"
+            fi
+          done
+
+      - name: Determine agent
+        id: agent
+        run: |
+          # Use input agent, or read from registry, or fall back to codex-mcp
+          AGENT="${{ inputs.agent }}"
+          if [[ -z "$AGENT" && -f wbaf/registry/best-agents.yaml ]]; then
+            AGENT="$(uv run --directory wbaf python -c "
+          import yaml
+          with open('wbaf/registry/best-agents.yaml') as f:
+              reg = yaml.safe_load(f)
+          agents = reg.get('agents', [])
+          print(agents[0] if agents else 'codex-mcp')
+          ")"
+          fi
+          AGENT="${AGENT:-codex-mcp}"
+          echo "agent=$AGENT" >> "$GITHUB_OUTPUT"
+          echo "Using agent: $AGENT"
+
+      - name: Run evaluation
+        working-directory: wbaf
+        run: |
+          CONFIG="${{ inputs.eval_config || 'evals/codex-all.yaml' }}"
+          AGENT="${{ steps.agent.outputs.agent }}"
+
+          echo "Config: $CONFIG"
+          echo "Agent: $AGENT"
+
+          uv run python -W ignore -m core.run_eval \
+            "$CONFIG" \
+            --agent "$AGENT" \
+            --weave-parallelism 15 \
+            2>&1 | tee eval-output.log
+
+      - name: Generate badges
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        working-directory: wbaf
+        run: |
+          mkdir -p ../agent-skills/.badges
+
+          uv run python -c "
+          import json, re
+          from pathlib import Path
+
+          log = Path('eval-output.log').read_text()
+
+          # Parse pass rates from eval output
+          # Default badge for each skill
+          skills_dir = Path('../agent-skills/skills')
+          for skill_dir in sorted(skills_dir.iterdir()):
+              if not skill_dir.is_dir() or not (skill_dir / 'SKILL.md').is_file():
+                  continue
+              name = skill_dir.name
+
+              badge = {
+                  'schemaVersion': 1,
+                  'label': name,
+                  'message': 'evaluated',
+                  'color': 'blue',
+              }
+
+              out = Path(f'../agent-skills/.badges/{name}.json')
+              out.write_text(json.dumps(badge, indent=2))
+              print(f'Badge: {out.name}')
+          "
+
+      - name: Commit badges
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        working-directory: agent-skills
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .badges/
+          if git diff --cached --quiet; then
+            echo "No badge changes"
+          else
+            git commit -m "update skill badges"
+            git push
+          fi
