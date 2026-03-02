@@ -176,9 +176,35 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
           uv run --directory wbaf python -c "
-          import yaml, re
+          import ast, re, yaml
           from pathlib import Path
 
+          # ── Parse eval summary from log ──
+          log = Path('wbaf/eval-output.log').read_text()
+          # Line format: 'agent-name: {dict}'
+          summary = {}
+          for line in log.splitlines():
+              m = re.match(r'^[\w-]+:\s*(\{.+\})\s*$', line)
+              if m:
+                  try:
+                      summary = ast.literal_eval(m.group(1))
+                  except Exception:
+                      pass
+
+          # Extract pass rates from scorers
+          total_tasks = summary.get('output', {}).get('succeeded', {}).get('true_count', 0)
+          # Use correctness scorer if available, fall back to rubric
+          scorer = summary.get('correctness') or summary.get('rubric') or {}
+          passed_info = scorer.get('passed', {})
+          passed_count = passed_info.get('true_count', 0)
+          score_mean = scorer.get('score', {}).get('mean', 0)
+
+          if total_tasks > 0:
+              status = f'{passed_count}/{total_tasks} passing ({score_mean:.0%})'
+          else:
+              status = 'evaluated'
+
+          # ── Build skill table ──
           skills_dir = Path('agent-skills/skills')
           readme = Path('agent-skills/README.md')
 
@@ -198,7 +224,7 @@ jobs:
               if len(desc) > 100:
                   desc = desc[:97] + '...'
 
-              rows.append(f'| [\`{name}\`](skills/{name}/) | {desc} | :white_check_mark: passing |')
+              rows.append(f'| [\`{name}\`](skills/{name}/) | {desc} | {status} |')
 
           table = '\n'.join([
               '| Skill | Description | Status |',
@@ -211,7 +237,7 @@ jobs:
           replacement = f'<!-- BEGIN SKILL TABLE -->\n{table}\n<!-- END SKILL TABLE -->'
           content = re.sub(pattern, replacement, content, flags=re.DOTALL)
           readme.write_text(content)
-          print('Updated README skill table')
+          print(f'Updated README — status: {status}')
           "
 
       - name: Commit results
