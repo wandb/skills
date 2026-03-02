@@ -1,12 +1,16 @@
 # agent-skills
 
+[![Evaluate Skills](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml/badge.svg)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
+
 Official Agent Skills for Weights & Biases Models and Weave.
 
 ## Available Skills
 
-| Skill | Description |
-|-------|-------------|
-| [`wandb`](skills/wandb/) | Explore and analyze W&B projects, runs, metrics, and configs via `wandb.Api` |
+<!-- BEGIN SKILL TABLE -->
+| Skill | Description | Status |
+|-------|-------------|--------|
+| [`wandb`](skills/wandb/) | Explore and analyze W&B projects, runs, metrics, and configs via `wandb.Api` | evaluated |
+<!-- END SKILL TABLE -->
 
 ## Skill Format
 

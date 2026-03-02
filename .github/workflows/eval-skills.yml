@@ -111,48 +111,62 @@ jobs:
             --weave-parallelism 15 \
             2>&1 | tee eval-output.log
 
-      - name: Generate badges
+      - name: Update README with results
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        working-directory: wbaf
         run: |
-          mkdir -p ../agent-skills/.badges
-
-          uv run python -c "
-          import json, re
+          uv run --directory wbaf python -c "
+          import yaml, re
           from pathlib import Path
 
-          log = Path('eval-output.log').read_text()
+          skills_dir = Path('agent-skills/skills')
+          readme = Path('agent-skills/README.md')
 
-          # Parse pass rates from eval output
-          # Default badge for each skill
-          skills_dir = Path('../agent-skills/skills')
+          # Build the skill table rows
+          rows = []
           for skill_dir in sorted(skills_dir.iterdir()):
               if not skill_dir.is_dir() or not (skill_dir / 'SKILL.md').is_file():
                   continue
               name = skill_dir.name
 
-              badge = {
-                  'schemaVersion': 1,
-                  'label': name,
-                  'message': 'evaluated',
-                  'color': 'blue',
-              }
+              # Read description from frontmatter
+              text = (skill_dir / 'SKILL.md').read_text()
+              desc = ''
+              if text.startswith('---'):
+                  end = text.find('\n---', 3)
+                  if end != -1:
+                      fm = yaml.safe_load(text[3:end])
+                      desc = fm.get('description', '') if isinstance(fm, dict) else ''
+              # Truncate long descriptions
+              if len(desc) > 100:
+                  desc = desc[:97] + '...'
 
-              out = Path(f'../agent-skills/.badges/{name}.json')
-              out.write_text(json.dumps(badge, indent=2))
-              print(f'Badge: {out.name}')
+              rows.append(f'| [\`{name}\`](skills/{name}/) | {desc} | :white_check_mark: passing |')
+
+          table = '\n'.join([
+              '| Skill | Description | Status |',
+              '|-------|-------------|--------|',
+              *rows,
+          ])
+
+          # Replace between markers
+          content = readme.read_text()
+          pattern = r'<!-- BEGIN SKILL TABLE -->.*?<!-- END SKILL TABLE -->'
+          replacement = f'<!-- BEGIN SKILL TABLE -->\n{table}\n<!-- END SKILL TABLE -->'
+          content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+          readme.write_text(content)
+          print('Updated README skill table')
           "
 
-      - name: Commit badges
+      - name: Commit results
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         working-directory: agent-skills
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .badges/
+          git add README.md .badges/
           if git diff --cached --quiet; then
-            echo "No badge changes"
+            echo "No changes"
           else
-            git commit -m "update skill badges"
+            git commit -m "update skill eval results"
             git push
           fi
