@@ -1,7 +1,10 @@
 name: Evaluate Skills
 
-# Runs the WandBAgentFactory eval framework against skills in this repo
-# using the Codex agent with MCP support (wbaf-refact branch).
+# Evaluates skills from this repo using the WandBAgentFactory eval framework.
+#
+# Self-contained: copies skills into WBAF, writes a temp agent config
+# referencing those skills, generates a temp eval YAML, and runs it.
+# No changes needed in WandBAgentFactory to test new skills.
 
 on:
   push:
@@ -14,15 +17,20 @@ on:
 
   workflow_dispatch:
     inputs:
-      eval_config:
-        description: "Eval config in the WBAF repo (e.g. evals/codex-all.yaml)"
-        required: false
-        default: "evals/codex-all.yaml"
-        type: string
-      agent:
-        description: "Agent config to use (e.g. codex-mcp)"
+      skills:
+        description: "Comma-separated skill names to test (blank = all in skills/)"
         required: false
         default: ""
+        type: string
+      base_agent:
+        description: "Base agent config to extend (must have image: codex)"
+        required: false
+        default: "codex-mcp"
+        type: string
+      eval_tasks:
+        description: "Eval config for task list (or 'all' for codex-all.yaml)"
+        required: false
+        default: "all"
         type: string
 
   schedule:
@@ -66,48 +74,101 @@ jobs:
         working-directory: wbaf
         run: uv sync
 
-      - name: Copy skills into eval framework
+      - name: Copy skills and generate eval configs
+        id: setup
         run: |
-          echo "Copying skills from agent-skills into wbaf/skills/..."
-          for skill_dir in agent-skills/skills/*/; do
-            name="$(basename "$skill_dir")"
-            if [[ -f "$skill_dir/SKILL.md" ]]; then
-              # Copy into wbaf skills/ (overwrites if exists)
-              cp -r "$skill_dir" "wbaf/skills/$name"
-              echo "  $name"
+          INPUT_SKILLS="${{ inputs.skills }}"
+          BASE_AGENT="${{ inputs.base_agent || 'codex-mcp' }}"
+          EVAL_TASKS="${{ inputs.eval_tasks || 'all' }}"
+
+          # ── Discover skills ──
+          if [[ -n "$INPUT_SKILLS" ]]; then
+            # Explicit list
+            IFS=',' read -ra SKILL_NAMES <<< "$INPUT_SKILLS"
+          else
+            # Auto-discover from agent-skills/skills/
+            SKILL_NAMES=()
+            for d in agent-skills/skills/*/; do
+              [[ -f "$d/SKILL.md" ]] && SKILL_NAMES+=("$(basename "$d")")
+            done
+          fi
+
+          echo "Skills to test: ${SKILL_NAMES[*]}"
+
+          # ── Copy skills into WBAF ──
+          for name in "${SKILL_NAMES[@]}"; do
+            name="$(echo "$name" | xargs)"  # trim whitespace
+            src="agent-skills/skills/$name"
+            dst="wbaf/skills/$name"
+            if [[ -d "$src" ]]; then
+              cp -r "$src" "$dst"
+              echo "  copied: $name"
+            else
+              echo "  WARNING: $name not found in agent-skills/skills/, skipping"
             fi
           done
 
-      - name: Determine agent
-        id: agent
-        run: |
-          # Use input agent, or read from registry, or fall back to codex-mcp
-          AGENT="${{ inputs.agent }}"
-          if [[ -z "$AGENT" && -f wbaf/registry/best-agents.yaml ]]; then
-            AGENT="$(uv run --directory wbaf python -c "
+          # ── Write temp agent config ──
+          # Extends the base agent (e.g. codex-mcp) and adds the skills
+          AGENT_DIR="wbaf/agents/ci-skill-eval"
+          mkdir -p "$AGENT_DIR"
+
+          uv run --directory wbaf python -c "
           import yaml
-          with open('wbaf/registry/best-agents.yaml') as f:
-              reg = yaml.safe_load(f)
-          agents = reg.get('agents', [])
-          print(agents[0] if agents else 'codex-mcp')
-          ")"
+          from pathlib import Path
+
+          skills = '${SKILL_NAMES[*]}'.split()
+          config = {
+              'extends': '$BASE_AGENT',
+              'skills': skills,
+          }
+          Path('$AGENT_DIR/config.yaml').write_text(
+              yaml.dump(config, default_flow_style=False)
+          )
+          print(f'Wrote agent config: ci-skill-eval')
+          print(f'  extends: $BASE_AGENT')
+          print(f'  skills: {skills}')
+          "
+
+          # ── Write temp eval config ──
+          if [[ "$EVAL_TASKS" == "all" ]]; then
+            # Use the task list from codex-all.yaml
+            EVAL_SRC="wbaf/evals/codex-all.yaml"
+          else
+            EVAL_SRC="wbaf/evals/$EVAL_TASKS"
           fi
-          AGENT="${AGENT:-codex-mcp}"
-          echo "agent=$AGENT" >> "$GITHUB_OUTPUT"
-          echo "Using agent: $AGENT"
+
+          uv run --directory wbaf python -c "
+          import yaml
+          from pathlib import Path
+
+          # Read tasks from source eval
+          src = yaml.safe_load(Path('$EVAL_SRC').read_text())
+          tasks = src.get('tasks', [])
+
+          eval_spec = {
+              'agents': ['ci-skill-eval'],
+              'scorers': src.get('scorers', ['rubric']),
+              'tasks': tasks,
+              'trials': 1,
+          }
+
+          out = Path('wbaf/evals/ci-skill-eval.yaml')
+          out.write_text(yaml.dump(eval_spec, default_flow_style=False, sort_keys=False))
+          print(f'Wrote eval config: {out}')
+          print(f'  agent: ci-skill-eval')
+          print(f'  tasks: {len(tasks)}')
+          print(f'  scorers: {eval_spec[\"scorers\"]}')
+          "
+
+          # Pass skill names to later steps
+          echo "skills=${SKILL_NAMES[*]}" >> "$GITHUB_OUTPUT"
 
       - name: Run evaluation
         working-directory: wbaf
         run: |
-          CONFIG="${{ inputs.eval_config || 'evals/codex-all.yaml' }}"
-          AGENT="${{ steps.agent.outputs.agent }}"
-
-          echo "Config: $CONFIG"
-          echo "Agent: $AGENT"
-
           uv run python -W ignore -m core.run_eval \
-            "$CONFIG" \
-            --agent "$AGENT" \
+            evals/ci-skill-eval.yaml \
             --weave-parallelism 15 \
             2>&1 | tee eval-output.log
 
@@ -121,14 +182,12 @@ jobs:
           skills_dir = Path('agent-skills/skills')
           readme = Path('agent-skills/README.md')
 
-          # Build the skill table rows
           rows = []
           for skill_dir in sorted(skills_dir.iterdir()):
               if not skill_dir.is_dir() or not (skill_dir / 'SKILL.md').is_file():
                   continue
               name = skill_dir.name
 
-              # Read description from frontmatter
               text = (skill_dir / 'SKILL.md').read_text()
               desc = ''
               if text.startswith('---'):
@@ -136,7 +195,6 @@ jobs:
                   if end != -1:
                       fm = yaml.safe_load(text[3:end])
                       desc = fm.get('description', '') if isinstance(fm, dict) else ''
-              # Truncate long descriptions
               if len(desc) > 100:
                   desc = desc[:97] + '...'
 
@@ -148,7 +206,6 @@ jobs:
               *rows,
           ])
 
-          # Replace between markers
           content = readme.read_text()
           pattern = r'<!-- BEGIN SKILL TABLE -->.*?<!-- END SKILL TABLE -->'
           replacement = f'<!-- BEGIN SKILL TABLE -->\n{table}\n<!-- END SKILL TABLE -->'
@@ -163,7 +220,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md .badges/
+          git add README.md
           if git diff --cached --quiet; then
             echo "No changes"
           else
