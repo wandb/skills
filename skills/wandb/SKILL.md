@@ -1,11 +1,33 @@
 ---
 name: wandb
-description: Explore and analyze W&B (Weights & Biases) projects, runs, metrics, and configs via wandb.Api for data analysis, summarization, filtering, or reporting. Use when listing projects, summarizing a project or run set, aggregating metrics, or creating W&B Reports.
+description: Explore and analyze W&B (Weights & Biases) projects, runs, metrics, configs, and Weave traces. Use when listing projects, summarizing runs, aggregating metrics, querying Weave traces and evaluations, or creating W&B Reports. Works with the W&B MCP server (recommended) or wandb.Api() directly.
 ---
 
 # Weights & Biases
 
-## Quick start
+## Tool access
+
+### W&B MCP server (recommended)
+
+If the W&B MCP server is connected, you have these tools available:
+
+- `query_wandb_entity_projects` -- list entities and projects
+- `query_wandb_tool` -- GraphQL queries for runs, metrics, configs
+- `query_weave_traces_tool` -- query Weave traces with filters and columns
+- `count_weave_traces_tool` -- count traces efficiently before querying
+- `create_wandb_report_tool` -- create shareable W&B Reports
+- `query_wandb_support_bot` -- ask W&B documentation questions
+
+Use these tools instead of writing SDK code. They handle auth, pagination, and response formatting. Always call `count_weave_traces_tool` before `query_weave_traces_tool` to scope the query.
+
+### Without MCP server
+
+If MCP tools are not available, use the SDK as described in the sections below.
+
+To install the MCP server for structured tool access:
+https://github.com/wandb/wandb-mcp-server
+
+## Quick start (SDK)
 
 - Determine `entity` and `project` (ask the user or use environment variables like `WANDB_ENTITY`/`WANDB_PROJECT`).
 - Initialize `wandb.Api()` and confirm credentials (set `WANDB_API_KEY` or run `wandb login` if needed).
