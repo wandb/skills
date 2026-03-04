@@ -5,6 +5,8 @@ name: Evaluate Skills
 # Self-contained: copies skills into WBAF, writes a temp agent config
 # referencing those skills, generates a temp eval YAML, and runs it.
 # No changes needed in WandBAgentFactory to test new skills.
+#
+# Benchmarks against both Codex and Claude Code agents via matrix strategy.
 
 on:
   push:
@@ -22,13 +24,13 @@ on:
         required: false
         default: ""
         type: string
-      base_agent:
-        description: "Base agent config to extend (must have image: codex)"
+      base_agents:
+        description: 'JSON array of base agents, e.g. ["codex-mcp","claude-code"]'
         required: false
-        default: "codex-mcp"
+        default: ""
         type: string
       eval_tasks:
-        description: "Eval config for task list (or 'all' for codex-all.yaml)"
+        description: "Eval config name in WBAF (without .yaml extension)"
         required: false
         default: "all"
         type: string
@@ -39,13 +41,18 @@ on:
 
 jobs:
   eval:
-    name: Evaluate skills
+    name: "Eval skills (${{ matrix.base_agent }})"
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        base_agent: ${{ fromJson(inputs.base_agents || '["codex-mcp", "claude-code"]') }}
 
     env:
       WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
       MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
 
@@ -55,11 +62,11 @@ jobs:
         with:
           path: agent-skills
 
-      - name: Checkout WandBAgentFactory (wbaf-refact)
+      - name: Checkout WandBAgentFactory
         uses: actions/checkout@v4
         with:
           repository: wandb/WandBAgentFactory
-          ref: wbaf-refact
+          ref: main
           token: ${{ secrets.WBAF_PAT }}
           path: wbaf
 
@@ -74,19 +81,21 @@ jobs:
         working-directory: wbaf
         run: uv sync
 
+      - name: Configure Weave project
+        working-directory: wbaf
+        run: printf 'entity: wandb\nproject: wb-agent-frozen\n' > wandb_settings.yaml
+
       - name: Copy skills and generate eval configs
         id: setup
         run: |
           INPUT_SKILLS="${{ inputs.skills }}"
-          BASE_AGENT="${{ inputs.base_agent || 'codex-mcp' }}"
+          BASE_AGENT="${{ matrix.base_agent }}"
           EVAL_TASKS="${{ inputs.eval_tasks || 'all' }}"
 
           # ── Discover skills ──
           if [[ -n "$INPUT_SKILLS" ]]; then
-            # Explicit list
             IFS=',' read -ra SKILL_NAMES <<< "$INPUT_SKILLS"
           else
-            # Auto-discover from agent-skills/skills/
             SKILL_NAMES=()
             for d in agent-skills/skills/*/; do
               [[ -f "$d/SKILL.md" ]] && SKILL_NAMES+=("$(basename "$d")")
@@ -94,10 +103,11 @@ jobs:
           fi
 
           echo "Skills to test: ${SKILL_NAMES[*]}"
+          echo "Base agent: $BASE_AGENT"
 
           # ── Copy skills into WBAF ──
           for name in "${SKILL_NAMES[@]}"; do
-            name="$(echo "$name" | xargs)"  # trim whitespace
+            name="$(echo "$name" | xargs)"
             src="agent-skills/skills/$name"
             dst="wbaf/skills/$name"
             if [[ -d "$src" ]]; then
@@ -109,8 +119,9 @@ jobs:
           done
 
           # ── Write temp agent config ──
-          # Extends the base agent (e.g. codex-mcp) and adds the skills
-          AGENT_DIR="wbaf/agents/ci-skill-eval"
+          # Unique name per matrix cell to avoid collisions
+          AGENT_NAME="ci-skill-eval-${BASE_AGENT}"
+          AGENT_DIR="wbaf/agents/${AGENT_NAME}"
           mkdir -p "$AGENT_DIR"
 
           uv run --directory wbaf python -c "
@@ -125,29 +136,21 @@ jobs:
           Path('$AGENT_DIR/config.yaml').write_text(
               yaml.dump(config, default_flow_style=False)
           )
-          print(f'Wrote agent config: ci-skill-eval')
-          print(f'  extends: $BASE_AGENT')
-          print(f'  skills: {skills}')
+          print(f'Agent: $AGENT_NAME (extends $BASE_AGENT, skills={skills})')
           "
 
           # ── Write temp eval config ──
-          if [[ "$EVAL_TASKS" == "all" ]]; then
-            # Use the task list from codex-all.yaml
-            EVAL_SRC="wbaf/evals/codex-all.yaml"
-          else
-            EVAL_SRC="wbaf/evals/$EVAL_TASKS"
-          fi
+          EVAL_SRC="wbaf/evals/${EVAL_TASKS}.yaml"
 
           uv run --directory wbaf python -c "
           import yaml
           from pathlib import Path
 
-          # Read tasks from source eval
           src = yaml.safe_load(Path('$EVAL_SRC').read_text())
           tasks = src.get('tasks', [])
 
           eval_spec = {
-              'agents': ['ci-skill-eval'],
+              'agents': ['$AGENT_NAME'],
               'scorers': src.get('scorers', ['rubric']),
               'tasks': tasks,
               'trials': 1,
@@ -155,13 +158,10 @@ jobs:
 
           out = Path('wbaf/evals/ci-skill-eval.yaml')
           out.write_text(yaml.dump(eval_spec, default_flow_style=False, sort_keys=False))
-          print(f'Wrote eval config: {out}')
-          print(f'  agent: ci-skill-eval')
-          print(f'  tasks: {len(tasks)}')
-          print(f'  scorers: {eval_spec[\"scorers\"]}')
+          print(f'Eval: {len(tasks)} tasks, scorers={eval_spec[\"scorers\"]}')
           "
 
-          # Pass skill names to later steps
+          echo "agent_name=$AGENT_NAME" >> "$GITHUB_OUTPUT"
           echo "skills=${SKILL_NAMES[*]}" >> "$GITHUB_OUTPUT"
 
       - name: Run evaluation
@@ -172,41 +172,89 @@ jobs:
             --weave-parallelism 15 \
             2>&1 | tee eval-output.log
 
+      - name: Upload eval log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-log-${{ matrix.base_agent }}
+          path: wbaf/eval-output.log
+          retention-days: 30
+
+  # ── Update README with aggregated results ──
+  update-readme:
+    name: Update README
+    needs: eval
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout agent-skills
+        uses: actions/checkout@v4
+
+      - name: Download all eval logs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: eval-log-*
+          path: eval-logs/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install
+
       - name: Update README with results
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
-          uv run --directory wbaf python -c "
+          uv run python -c "
           import ast, re, yaml
           from pathlib import Path
 
-          # ── Parse eval summary from log ──
-          log = Path('wbaf/eval-output.log').read_text()
-          # Line format: 'agent-name: {dict}'
-          summary = {}
-          for line in log.splitlines():
-              m = re.match(r'^[\w-]+:\s*(\{.+\})\s*$', line)
-              if m:
-                  try:
-                      summary = ast.literal_eval(m.group(1))
-                  except Exception:
-                      pass
+          # ── Parse results from all eval logs ──
+          results = {}
+          for log_dir in sorted(Path('eval-logs').iterdir()):
+              if not log_dir.is_dir():
+                  continue
+              agent = log_dir.name.replace('eval-log-', '')
+              log_file = log_dir / 'eval-output.log'
+              if not log_file.exists():
+                  continue
 
-          # Extract pass rates from scorers
-          total_tasks = summary.get('output', {}).get('succeeded', {}).get('true_count', 0)
-          # Use correctness scorer if available, fall back to rubric
-          scorer = summary.get('correctness') or summary.get('rubric') or {}
-          passed_info = scorer.get('passed', {})
-          passed_count = passed_info.get('true_count', 0)
-          score_mean = scorer.get('score', {}).get('mean', 0)
+              log = log_file.read_text()
+              summary = {}
+              for line in log.splitlines():
+                  m = re.match(r'^[\w-]+:\s*(\{.+\})\s*$', line)
+                  if m:
+                      try:
+                          summary = ast.literal_eval(m.group(1))
+                      except Exception:
+                          pass
+              results[agent] = summary
+
+          # ── Compute aggregate status across agents ──
+          total_passed = 0
+          total_tasks = 0
+          agent_statuses = []
+
+          for agent, summary in results.items():
+              tasks_count = summary.get('output', {}).get('succeeded', {}).get('true_count', 0)
+              scorer = summary.get('correctness') or summary.get('rubric') or {}
+              passed = scorer.get('passed', {}).get('true_count', 0)
+              score_mean = scorer.get('score', {}).get('mean', 0)
+              total_passed += passed
+              total_tasks += tasks_count
+              if tasks_count > 0:
+                  agent_statuses.append(f'{agent}: {passed}/{tasks_count} ({score_mean:.0%})')
 
           if total_tasks > 0:
-              status = f'{passed_count}/{total_tasks} passing ({score_mean:.0%})'
+              status = f'{total_passed}/{total_tasks} passing'
+              if agent_statuses:
+                  status += ' — ' + ', '.join(agent_statuses)
           else:
               status = 'evaluated'
 
           # ── Build skill table ──
-          skills_dir = Path('agent-skills/skills')
-          readme = Path('agent-skills/README.md')
+          skills_dir = Path('skills')
+          readme = Path('README.md')
 
           rows = []
           for skill_dir in sorted(skills_dir.iterdir()):
@@ -241,8 +289,6 @@ jobs:
           "
 
       - name: Commit results
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        working-directory: agent-skills
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
