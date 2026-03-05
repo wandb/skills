@@ -1,6 +1,8 @@
 # agent-skills
 
 [![Evaluate Skills](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml/badge.svg)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
+[![Codex](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/agent-skills/main/.badges/codex.json)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
+[![Claude Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/agent-skills/main/.badges/claude-code.json)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
 
 Agent skills for working with [Weights & Biases](https://wandb.ai). Explore projects, analyze runs, query metrics, and create reports — all from your coding agent.
 

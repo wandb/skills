@@ -30,9 +30,9 @@ on:
         default: ""
         type: string
       eval_tasks:
-        description: "Eval config name in WBAF (without .yaml extension)"
+        description: "Eval config name in WBAF (without .yaml; default: wba-all)"
         required: false
-        default: "all"
+        default: "wba-all"
         type: string
 
   schedule:
@@ -85,12 +85,14 @@ jobs:
         working-directory: wbaf
         run: printf 'entity: wandb\nproject: wb-agent-frozen\n' > wandb_settings.yaml
 
-      - name: Copy skills and generate eval configs
+      - name: Regenerate eval task list and copy skills
         id: setup
         run: |
           INPUT_SKILLS="${{ inputs.skills }}"
           BASE_AGENT="${{ matrix.base_agent }}"
-          EVAL_TASKS="${{ inputs.eval_tasks || 'all' }}"
+
+          # ── Regenerate wba-all.yaml to pick up any new tasks ──
+          uv run --directory wbaf python developer/scripts/update_all_eval.py
 
           # ── Discover skills ──
           if [[ -n "$INPUT_SKILLS" ]]; then
@@ -119,7 +121,6 @@ jobs:
           done
 
           # ── Write temp agent config ──
-          # Unique name per matrix cell to avoid collisions
           AGENT_NAME="ci-skill-eval-${BASE_AGENT}"
           AGENT_DIR="wbaf/agents/${AGENT_NAME}"
           mkdir -p "$AGENT_DIR"
@@ -139,14 +140,13 @@ jobs:
           print(f'Agent: $AGENT_NAME (extends $BASE_AGENT, skills={skills})')
           "
 
-          # ── Write temp eval config ──
-          EVAL_SRC="wbaf/evals/${EVAL_TASKS}.yaml"
-
+          # ── Write temp eval config from wba-all.yaml ──
           uv run --directory wbaf python -c "
           import yaml
           from pathlib import Path
 
-          src = yaml.safe_load(Path('$EVAL_SRC').read_text())
+          eval_file = '${{ inputs.eval_tasks || 'wba-all' }}'
+          src = yaml.safe_load(Path(f'wbaf/evals/{eval_file}.yaml').read_text())
           tasks = src.get('tasks', [])
 
           eval_spec = {
@@ -172,17 +172,57 @@ jobs:
             --weave-parallelism 15 \
             2>&1 | tee eval-output.log
 
-      - name: Upload eval log
+      - name: Extract results summary
+        if: always()
+        id: results
+        run: |
+          # Extract only aggregate pass/fail counts — no task names or details.
+          uv run --directory wbaf python -c "
+          import re, json
+
+          log = open('wbaf/eval-output.log').read()
+
+          # Find the last summary line (agent-name: {dict})
+          summary = {}
+          for line in log.splitlines():
+              m = re.match(r'^[\w-]+:\s*(\{.+\})\s*$', line)
+              if m:
+                  try:
+                      summary = eval(m.group(1))
+                  except Exception:
+                      pass
+
+          # Extract only aggregate counts
+          scorer = summary.get('rubric') or summary.get('correctness') or {}
+          output = summary.get('output', {})
+
+          result = {
+              'passed': scorer.get('passed', {}).get('true_count', 0),
+              'failed': scorer.get('passed', {}).get('true_count', 0),
+              'total': output.get('succeeded', {}).get('true_count', 0)
+                       + output.get('succeeded', {}).get('false_count', 0),
+              'score_mean': scorer.get('score', {}).get('mean', 0),
+          }
+
+          # Correct failed count
+          result['failed'] = result['total'] - result['passed']
+
+          print(json.dumps(result))
+          with open('wbaf/results-summary.json', 'w') as f:
+              json.dump(result, f)
+          " || echo '{"passed":0,"failed":0,"total":0,"score_mean":0}' > wbaf/results-summary.json
+
+      - name: Upload results summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: eval-log-${{ matrix.base_agent }}
-          path: wbaf/eval-output.log
-          retention-days: 30
+          name: results-${{ matrix.base_agent }}
+          path: wbaf/results-summary.json
+          retention-days: 90
 
-  # ── Update README with aggregated results ──
+  # ── Update README and badges with aggregated results ──
   update-readme:
-    name: Update README
+    name: Update README & Badges
     needs: eval
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -191,66 +231,63 @@ jobs:
       - name: Checkout agent-skills
         uses: actions/checkout@v4
 
-      - name: Download all eval logs
+      - name: Download all result summaries
         uses: actions/download-artifact@v4
         with:
-          pattern: eval-log-*
-          path: eval-logs/
+          pattern: results-*
+          path: results/
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Set up Python
-        run: uv python install
-
-      - name: Update README with results
+      - name: Update README and badges
         run: |
-          uv run python -c "
-          import ast, re, yaml
+          python3 -c "
+          import json, re, yaml
           from pathlib import Path
 
-          # ── Parse results from all eval logs ──
-          results = {}
-          for log_dir in sorted(Path('eval-logs').iterdir()):
-              if not log_dir.is_dir():
+          # ── Parse results from all agents ──
+          agents = {}
+          for result_dir in sorted(Path('results').iterdir()):
+              if not result_dir.is_dir():
                   continue
-              agent = log_dir.name.replace('eval-log-', '')
-              log_file = log_dir / 'eval-output.log'
-              if not log_file.exists():
-                  continue
+              agent = result_dir.name.replace('results-', '')
+              summary_file = result_dir / 'results-summary.json'
+              if summary_file.exists():
+                  agents[agent] = json.loads(summary_file.read_text())
 
-              log = log_file.read_text()
-              summary = {}
-              for line in log.splitlines():
-                  m = re.match(r'^[\w-]+:\s*(\{.+\})\s*$', line)
-                  if m:
-                      try:
-                          summary = ast.literal_eval(m.group(1))
-                      except Exception:
-                          pass
-              results[agent] = summary
+          # ── Generate per-agent badges ──
+          badges_dir = Path('.badges')
+          badges_dir.mkdir(exist_ok=True)
 
-          # ── Compute aggregate status across agents ──
-          total_passed = 0
-          total_tasks = 0
-          agent_statuses = []
+          for agent, data in agents.items():
+              passed = data.get('passed', 0)
+              total = data.get('total', 0)
+              score = data.get('score_mean', 0)
 
-          for agent, summary in results.items():
-              tasks_count = summary.get('output', {}).get('succeeded', {}).get('true_count', 0)
-              scorer = summary.get('correctness') or summary.get('rubric') or {}
-              passed = scorer.get('passed', {}).get('true_count', 0)
-              score_mean = scorer.get('score', {}).get('mean', 0)
-              total_passed += passed
-              total_tasks += tasks_count
-              if tasks_count > 0:
-                  agent_statuses.append(f'{agent}: {passed}/{tasks_count} ({score_mean:.0%})')
+              if total > 0:
+                  pct = passed / total
+                  label = f'{passed}/{total} ({pct:.0%})'
+                  color = 'brightgreen' if pct >= 0.8 else 'yellow' if pct >= 0.5 else 'red'
+              else:
+                  label = 'no data'
+                  color = 'lightgrey'
 
-          if total_tasks > 0:
-              status = f'{total_passed}/{total_tasks} passing'
-              if agent_statuses:
-                  status += ' — ' + ', '.join(agent_statuses)
-          else:
-              status = 'evaluated'
+              badge = {
+                  'schemaVersion': 1,
+                  'label': agent,
+                  'message': label,
+                  'color': color,
+              }
+              (badges_dir / f'{agent}.json').write_text(
+                  json.dumps(badge, indent=2) + '\n'
+              )
+
+          # ── Build status string for skill table ──
+          parts = []
+          for agent, data in sorted(agents.items()):
+              passed = data.get('passed', 0)
+              total = data.get('total', 0)
+              if total > 0:
+                  parts.append(f'{agent}: {passed}/{total} ({passed/total:.0%})')
+          status = ' | '.join(parts) if parts else 'evaluated'
 
           # ── Build skill table ──
           skills_dir = Path('skills')
@@ -285,17 +322,17 @@ jobs:
           replacement = f'<!-- BEGIN SKILL TABLE -->\n{table}\n<!-- END SKILL TABLE -->'
           content = re.sub(pattern, replacement, content, flags=re.DOTALL)
           readme.write_text(content)
-          print(f'Updated README — status: {status}')
+          print(f'Updated README - status: {status}')
           "
 
       - name: Commit results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md
+          git add README.md .badges/
           if git diff --cached --quiet; then
             echo "No changes"
           else
-            git commit -m "update skill eval results"
+            git commit -m "update skill eval results and badges"
             git push
           fi
