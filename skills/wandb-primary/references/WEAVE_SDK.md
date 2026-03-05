@@ -1,12 +1,10 @@
-# Weave SDK — Raw Low-Level API
+# Weave SDK Reference — Traces, Calls, Evaluations
 
-Use this reference when the high-level `weave_tools.weave_api` (see `WEAVE_API.md`) doesn't cover your use case. The raw SDK gives you direct access to `client.get_calls()`, `CallsFilter`, MongoDB-style queries, and server-side stats.
+Reference for querying Weave GenAI trace data using the `weave` Python SDK. Covers initialization, querying calls, filtering, MongoDB-style queries, server-side stats, and reading call data.
 
-**Prefer the high-level API for most tasks.** Use this when you need:
-- Custom CallsFilter combinations
-- MongoDB-style query expressions
-- Server-side call counting (calls_query_stats)
-- Direct call data access without wrappers
+**Key principle**: Weave traces can be large. Always use `unwrap()` to convert Weave wrapper types to plain Python, then load into pandas for analysis. Never dump raw call data into context.
+
+Use the bundled `weave_helpers.py` for common operations (unwrap, token extraction, eval results). This reference covers the full SDK for when you need more control.
 
 ## Initialization
 
