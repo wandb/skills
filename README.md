@@ -2,14 +2,77 @@
 
 [![Evaluate Skills](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml/badge.svg)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
 
-Official Agent Skills for Weights & Biases Models and Weave.
+Agent skills for working with [Weights & Biases](https://wandb.ai). Explore projects, analyze runs, query metrics, and create reports — all from your coding agent.
+
+## Supported Coding Agents
+
+These skills can be installed for any agent supported by [`skills.sh`](https://skills.sh), including Claude Code, Cursor, Windsurf, Goose, and [many more](https://github.com/vercel-labs/skills).
+
+## Prerequisites
+
+- A [W&B API key](https://wandb.ai/authorize)
+
+## Installation
+
+### Quick Install
+
+Using [`npx skills`](https://github.com/vercel-labs/skills):
+
+**Local** (current project):
+```bash
+npx skills add wandb/agent-skills --skill '*' --yes
+```
+
+**Global** (all projects):
+```bash
+npx skills add wandb/agent-skills --skill '*' --yes --global
+```
+
+To link skills to a specific agent (e.g. Claude Code):
+```bash
+npx skills add wandb/agent-skills --agent claude-code --skill '*' --yes --global
+```
+
+### Install Script (Claude Code only)
+
+Alternatively, clone the repo and use the install script:
+
+```bash
+git clone https://github.com/wandb/agent-skills.git
+cd agent-skills
+
+# Install for Claude Code in current directory (default)
+./install.sh
+
+# Install for Claude Code globally
+./install.sh --global
+
+# Force reinstall without prompts
+./install.sh --force --yes
+```
+
+| Flag | Description |
+|------|-------------|
+| `--global`, `-g` | Install globally instead of current directory |
+| `--force`, `-f` | Overwrite skills with same names as this package |
+| `--yes`, `-y` | Skip confirmation prompts |
+
+## Usage
+
+After installation, set your API key:
+
+```bash
+export WANDB_API_KEY=<your-key>
+```
+
+Then run your coding agent from the directory where you installed (for local installs) or from anywhere (for global installs).
 
 ## Available Skills
 
 <!-- BEGIN SKILL TABLE -->
 | Skill | Description | Status |
 |-------|-------------|--------|
-| [`wandb`](skills/wandb/) | Explore and analyze W&B projects, runs, metrics, and configs via `wandb.Api` | evaluated |
+| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for W&B SDK (runs, metrics, artifacts, sweeps) and Weave SDK (traces, evaluations, scorers) | evaluated |
 <!-- END SKILL TABLE -->
 
 ## Skill Format
@@ -38,10 +101,16 @@ The frontmatter requires `name` and `description`. The body contains instruction
 
 ## Evaluation
 
-Skills are automatically evaluated on merge to `main` using the [WandBAgentFactory](https://github.com/wandb/WandBAgentFactory) eval framework with a Codex agent and MCP tools. Results are tracked in [Weave](https://wandb.ai/site/weave).
+Skills are automatically evaluated on merge to `main` using the [WandBAgentFactory](https://github.com/wandb/WandBAgentFactory) eval framework, benchmarked against both Codex and Claude Code agents. Results are tracked in [Weave](https://wandb.ai/site/weave).
 
 ## Contributing
 
 1. Create `skills/<your-skill>/SKILL.md` with frontmatter and instructions
 2. Open a PR — CI will run the skill through the eval suite
 3. Merge to `main` to publish
+
+To update an existing installation:
+
+```bash
+./install.sh --force
+```
