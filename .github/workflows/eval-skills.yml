@@ -83,7 +83,8 @@ jobs:
 
       - name: Configure Weave project
         working-directory: wbaf
-        run: printf 'entity: wandb\nproject: wb-agent-frozen\n' > wandb_settings.yaml
+        run: |
+          printf 'entity: wandb\nproject: wb-agent-frozen\n' > wandb_settings.yaml
 
       - name: Regenerate eval task list and copy skills
         id: setup
