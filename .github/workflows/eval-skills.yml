@@ -122,9 +122,10 @@ jobs:
           done
 
           # ── Write temp agent config ──
+          # Paths: shell uses wbaf/ prefix (cwd=workspace root),
+          # Python uses no prefix (uv --directory wbaf sets cwd=wbaf/).
           AGENT_NAME="ci-skill-eval-${BASE_AGENT}"
-          AGENT_DIR="wbaf/agents/${AGENT_NAME}"
-          mkdir -p "$AGENT_DIR"
+          mkdir -p "wbaf/agents/${AGENT_NAME}"
 
           uv run --directory wbaf python -c "
           import yaml
@@ -135,9 +136,9 @@ jobs:
               'extends': '$BASE_AGENT',
               'skills': skills,
           }
-          Path('$AGENT_DIR/config.yaml').write_text(
-              yaml.dump(config, default_flow_style=False)
-          )
+          out = Path('agents/$AGENT_NAME/config.yaml')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(yaml.dump(config, default_flow_style=False))
           print(f'Agent: $AGENT_NAME (extends $BASE_AGENT, skills={skills})')
           "
 
@@ -147,7 +148,7 @@ jobs:
           from pathlib import Path
 
           eval_file = '${{ inputs.eval_tasks || 'wba-all' }}'
-          src = yaml.safe_load(Path(f'wbaf/evals/{eval_file}.yaml').read_text())
+          src = yaml.safe_load(Path(f'evals/{eval_file}.yaml').read_text())
           tasks = src.get('tasks', [])
 
           eval_spec = {
@@ -157,7 +158,7 @@ jobs:
               'trials': 1,
           }
 
-          out = Path('wbaf/evals/ci-skill-eval.yaml')
+          out = Path('evals/ci-skill-eval.yaml')
           out.write_text(yaml.dump(eval_spec, default_flow_style=False, sort_keys=False))
           print(f'Eval: {len(tasks)} tasks, scorers={eval_spec[\"scorers\"]}')
           "
@@ -181,7 +182,7 @@ jobs:
           uv run --directory wbaf python -c "
           import re, json
 
-          log = open('wbaf/eval-output.log').read()
+          log = open('eval-output.log').read()
 
           # Find the last summary line (agent-name: {dict})
           summary = {}
@@ -209,7 +210,7 @@ jobs:
           result['failed'] = result['total'] - result['passed']
 
           print(json.dumps(result))
-          with open('wbaf/results-summary.json', 'w') as f:
+          with open('results-summary.json', 'w') as f:
               json.dump(result, f)
           " || echo '{"passed":0,"failed":0,"total":0,"score_mean":0}' > wbaf/results-summary.json
 
