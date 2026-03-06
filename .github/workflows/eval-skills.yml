@@ -57,10 +57,10 @@ jobs:
       MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
 
     steps:
-      - name: Checkout agent-skills
+      - name: Checkout skills
         uses: actions/checkout@v4
         with:
-          path: agent-skills
+          path: skills
 
       - name: Checkout WandBAgentFactory
         uses: actions/checkout@v4
@@ -100,7 +100,7 @@ jobs:
             IFS=',' read -ra SKILL_NAMES <<< "$INPUT_SKILLS"
           else
             SKILL_NAMES=()
-            for d in agent-skills/skills/*/; do
+            for d in skills/skills/*/; do
               [[ -f "$d/SKILL.md" ]] && SKILL_NAMES+=("$(basename "$d")")
             done
           fi
@@ -111,13 +111,13 @@ jobs:
           # ── Copy skills into WBAF ──
           for name in "${SKILL_NAMES[@]}"; do
             name="$(echo "$name" | xargs)"
-            src="agent-skills/skills/$name"
+            src="skills/skills/$name"
             dst="wbaf/skills/$name"
             if [[ -d "$src" ]]; then
               cp -r "$src" "$dst"
               echo "  copied: $name"
             else
-              echo "  WARNING: $name not found in agent-skills/skills/, skipping"
+              echo "  WARNING: $name not found in skills/skills/, skipping"
             fi
           done
 
@@ -230,7 +230,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout agent-skills
+      - name: Checkout skills
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.WBAF_PAT }}
