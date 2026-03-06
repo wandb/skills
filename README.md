@@ -1,12 +1,12 @@
-# agent-skills
+# skills
 
-[![Evaluate Skills](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml/badge.svg)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
-[![Codex](https://img.shields.io/badge/codex-25%2F34%20(74%25)-yellow)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
-[![Claude Code](https://img.shields.io/badge/claude--code-31%2F34%20(91%25)-brightgreen)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
+[![Evaluate Skills](https://github.com/wandb/skills/actions/workflows/eval-skills.yml/badge.svg)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
+[![Codex](https://img.shields.io/badge/codex-25%2F34%20(74%25)-yellow)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
+[![Claude Code](https://img.shields.io/badge/claude--code-31%2F34%20(91%25)-brightgreen)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
 
 <!-- Uncomment to make badges live (requires public repo):
-[![Codex](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/agent-skills/main/.badges/codex.json)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
-[![Claude Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/agent-skills/main/.badges/claude-code.json)](https://github.com/wandb/agent-skills/actions/workflows/eval-skills.yml)
+[![Codex](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/codex.json)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
+[![Claude Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/claude-code.json)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
 -->
 
 Agent skills for working with [Weights & Biases](https://wandb.ai). Explore projects, analyze runs, query metrics, and create reports — all from your coding agent.
@@ -27,17 +27,17 @@ Using [`npx skills`](https://github.com/vercel-labs/skills):
 
 **Local** (current project):
 ```bash
-npx skills add wandb/agent-skills --skill '*' --yes
+npx skills add wandb/skills --skill '*' --yes
 ```
 
 **Global** (all projects):
 ```bash
-npx skills add wandb/agent-skills --skill '*' --yes --global
+npx skills add wandb/skills --skill '*' --yes --global
 ```
 
 To link skills to a specific agent (e.g. Claude Code):
 ```bash
-npx skills add wandb/agent-skills --agent claude-code --skill '*' --yes --global
+npx skills add wandb/skills --agent claude-code --skill '*' --yes --global
 ```
 
 ### Install Script (Claude Code only)
@@ -45,8 +45,8 @@ npx skills add wandb/agent-skills --agent claude-code --skill '*' --yes --global
 Alternatively, clone the repo and use the install script:
 
 ```bash
-git clone https://github.com/wandb/agent-skills.git
-cd agent-skills
+git clone https://github.com/wandb/skills.git
+cd skills
 
 # Install for Claude Code in current directory (default)
 ./install.sh
