@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-PackageName: skills
+
 """Helpers for working with Weave trace data.
 
 Weave is the W&B product for GenAI/LLM application development — tracing,

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
+SPDX-License-Identifier: Apache-2.0
+SPDX-PackageName: skills
+-->
+
 # Weave SDK Reference — Traces, Calls, Evaluations
 
 Reference for querying Weave GenAI trace data using the `weave` Python SDK. Covers initialization, querying calls, filtering, MongoDB-style queries, server-side stats, and reading call data.
