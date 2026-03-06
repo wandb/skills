@@ -195,7 +195,7 @@ jobs:
                       pass
 
           # Extract only aggregate counts
-          scorer = summary.get('rubric') or summary.get('correctness') or {}
+          scorer = summary.get('scorer') or summary.get('rubric') or summary.get('correctness') or {}
           output = summary.get('output', {})
 
           result = {
