@@ -112,12 +112,4 @@ Skills are automatically evaluated on merge to `main` using the [WandBAgentFacto
 
 ## Contributing
 
-1. Create `skills/<your-skill>/SKILL.md` with frontmatter and instructions
-2. Open a PR — CI will run the skill through the eval suite
-3. Merge to `main` to publish
-
-To update an existing installation:
-
-```bash
-./install.sh --force
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md).

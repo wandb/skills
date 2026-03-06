@@ -1,6 +1,14 @@
 # Contributing to wandb skills
 
-(wandb team to populate)
+1. Create `skills/<your-skill>/SKILL.md` with frontmatter and instructions
+2. Open a PR — CI will run the skill through the eval suite
+3. Merge to `main` to publish
+
+To update an existing installation:
+
+```bash
+./install.sh --force
+```
 
 ## License headers
 <!--- REUSE-IgnoreStart -->
