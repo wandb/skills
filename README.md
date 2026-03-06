@@ -13,7 +13,7 @@ Agent skills for working with [Weights & Biases](https://wandb.ai). Explore proj
 
 ## Supported Coding Agents
 
-These skills can be installed for any agent supported by [`skills.sh`](https://skills.sh), including Claude Code, Cursor, Windsurf, Goose, and [many more](https://github.com/vercel-labs/skills).
+These skills can be installed for any agent supported by [`skills.sh`](https://skills.sh), [install](https://github.com/vercel-labs/skills).
 
 ## Prerequisites
 
