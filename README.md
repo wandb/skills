@@ -74,7 +74,7 @@ Then run your coding agent from the directory where you installed (for local ins
 <!-- BEGIN SKILL TABLE -->
 | Skill | Description | Status |
 |-------|-------------|--------|
-| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for W&B SDK (runs, metrics, artifacts, sweeps) and Weave SDK (traces, evaluations, scorers) | evaluated |
+| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (tr... | claude-code: 0/34 (0%) | codex: 0/34 (0%) |
 <!-- END SKILL TABLE -->
 
 ## Skill Format
