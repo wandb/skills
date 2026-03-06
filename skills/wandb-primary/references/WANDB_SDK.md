@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
+SPDX-License-Identifier: Apache-2.0
+SPDX-PackageName: skills
+-->
+
 # W&B SDK Reference — Runs, Metrics, Artifacts
 
 Reference for querying Weights & Biases training data using the `wandb` Python SDK. Covers runs, metrics history, artifacts, sweeps, and system metrics.
