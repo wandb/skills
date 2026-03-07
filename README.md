@@ -9,7 +9,24 @@
 [![Claude Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/claude-code.json)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
 -->
 
-Agent skills for working with [Weights & Biases](https://wandb.ai). Explore projects, analyze runs, query metrics, and create reports — all from your coding agent.
+Skills to guide Claude Code, Codex, and other coding agents on using the [Weights & Biases](https://wandb.ai) AI developer platform to train models and build agents. Using these skills, agents can learn to perform the following tasks in Weights & Biases.
+
+For model training
+	•	Log metrics and rich media during model training and fine-tuning
+	•	Track model training experiments
+	•	Analyze runs and experiment results to understand how the model is learning
+	•	Save model checkpoints and other artifacts
+	•	Track artifact lineage
+	•	Use the Registry for model and dataset lifecycle workflows, collaboration, and governance
+
+For agent building
+	•	Trace agentic AI applications
+	•	Analyze traces and classify them into failure modes
+	•	Evaluate models with labeled datasets
+	•	Run online evaluations for production monitoring
+	•	Turn production traces into test cases and add them to evaluation datasets
+	•	Build guardrails for agentic systems
+	•	Generate dynamic reports to communicate across teams
 
 ## Supported Coding Agents
 

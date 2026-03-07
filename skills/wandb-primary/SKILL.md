@@ -4,28 +4,28 @@
 # SPDX-PackageName: skills
 
 name: wandb-primary
-description: Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (training runs, metrics, artifacts, sweeps) and the Weave SDK (GenAI traces, evaluations, scorers). Includes helper libraries, gotcha tables, and data analysis patterns. Use this skill whenever the user asks about W&B runs, Weave traces, evaluations, training metrics, loss curves, model comparisons, or any Weights & Biases data — even if they don't say "W&B" explicitly.
+description: Weights & Biases is an AI development platform for model training and agent development. For model training, Weights & Biases provides the W&B SDK (wandb) to log experiment data (scalar metrics, rich media such as video and audio, metadata, and configs), manage model and dataset versions, and track lineage. For agent development, Weights & Biases provides the Weave SDK (weave) to trace agentic system rollouts, run offline evaluations with labeled datasets, analyze evaluation results to measure the impact of changes, monitor agents in production with online evaluations, and protect users and your company’s brand with guardrails USE FOR: training run analysis, model comparisons, hyperparameter optimization, model, dataset, and artifact lifecycle management, agent rollout tracing, agent evaluations, guardrails, and production monitoring through online evaluations. TRIGGER ON: W&B, wandb, Weave, experiment tracking, explainability, LLM or agent online/offline evaluations, observability, training metrics, hyperparameters, loss curves, token usage, artifacts, model comparisons, or any Weights & Biases data, even when “W&B,” “wandb,” or “Weave” are not mentioned explicitly.
 ---
 
 # W&B Primary Skill
 
 This skill covers everything an agent needs to work with Weights & Biases:
 
-- **W&B SDK** (`wandb`) — training runs, metrics, artifacts, sweeps, system metrics
-- **Weave SDK** (`weave`) — GenAI traces, evaluations, scorers, token usage
+- **W&B Models SDK** (`wandb`) — training runs, metrics, artifacts, sweeps, system metrics, registry, reports
+- **W&B Weave SDK** (`weave`) — Agentic AI traces, evaluations, scorers, monitors, guardrails, leaderboards, token usage
 - **Helper libraries** — `wandb_helpers.py` and `weave_helpers.py` for common operations
 - **High-level Weave API** (`weave_tools.weave_api`) — agent-friendly wrappers for Weave queries
 
-## When to use what
+## **Decision Flow: When to use each tool**
 
-| I need to... | Use |
-|---|---|
-| Query training runs, loss curves, hyperparameters | **W&B SDK** (`wandb.Api()`) — see `references/WANDB_SDK.md` |
-| Query GenAI traces, calls, evaluations | **High-level Weave API** (`weave_tools.weave_api`) — see `references/WEAVE_API.md` |
-| Convert Weave wrapper types to plain Python | **`weave_helpers.unwrap()`** |
-| Build a DataFrame from training runs | **`wandb_helpers.runs_to_dataframe()`** |
-| Extract eval results for analysis | **`weave_helpers.eval_results_to_dicts()`** |
-| Do something the high-level API doesn't cover | **Raw Weave SDK** (`weave.init()`, `client.get_calls()`) — see `references/WEAVE_SDK_RAW.md` |
+**Before starting, choose the correct library based on the data type:**
+
+| If the data is... | Use this Primary API | Then use this Helper to analyze |
+| --- | --- | --- |
+| **Training metrics** (Loss Curves, Accuracy, Learning Rate, System stats) | **W&B SDK** (`wandb.Api()`) | `wandb_helpers.runs_to_dataframe()` or `diagnose_run()` |
+| **AI Application or Agent Traces** (Prompts, Tool calls, RAG, Context engineering, JSON outputs) | **High-level Weave API** (`weave_tools`) | `weave_helpers.unwrap()` (Required for JSON/Pandas) |
+| **Evaluation Results** (Scores, Monitors, Online Evals, Guardrails, Rubrics, Pass rates) | **High-level Weave API** | `weave_helpers.eval_results_to_dicts()` |
+| **Low-level Trace Ops** (Server-side Query/CallsFilter) | **Raw Weave SDK** | `weave.init()`, `client.get_calls()` see `references/WEAVE_SDK_RAW.md` |
 
 ---
 
