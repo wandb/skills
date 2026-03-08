@@ -15,6 +15,7 @@ For model training
 	•	Log metrics and rich media during model training and fine-tuning
 	•	Track model training experiments
 	•	Analyze runs and experiment results to understand how the model is learning
+    •	Tune hyperparameters
 	•	Save model checkpoints and other artifacts
 	•	Track artifact lineage
 	•	Use the Registry for model and dataset lifecycle workflows, collaboration, and governance
