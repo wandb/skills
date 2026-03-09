@@ -6,7 +6,7 @@ name: Evaluate Skills
 # referencing those skills, generates a temp eval YAML, and runs it.
 # No changes needed in WandBAgentFactory to test new skills.
 #
-# Benchmarks against both Codex and Claude Code agents via matrix strategy.
+# Benchmarks against multiple agents via matrix strategy.
 
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        base_agent: ${{ fromJson(inputs.base_agents || '["codex", "claude-code"]') }}
+        base_agent: ${{ fromJson(inputs.base_agents || '["codex", "claude-code", "sonnet", "opus", "gpt-5.3-codex", "gpt-5.4"]') }}
 
     env:
       WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
