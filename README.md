@@ -1,114 +1,63 @@
 # skills
 
-[![Evaluate Skills](https://github.com/wandb/skills/actions/workflows/eval-skills.yml/badge.svg)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
-[![Codex](https://img.shields.io/badge/codex-25%2F34%20(74%25)-yellow)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
-[![Claude Code](https://img.shields.io/badge/claude--code-31%2F34%20(91%25)-brightgreen)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
+[![Evaluate Skills](https://github.com/wandb/skills/actions/workflows/eval-skills.yml/badge.svg?branch=main)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml?query=branch%3Amain)
+[![Codex](https://img.shields.io/badge/codex-25%2F34%20(74%25)-yellow)](#benchmarks)
+[![Claude Code](https://img.shields.io/badge/claude--code-31%2F34%20(91%25)-brightgreen)](#benchmarks)
 
 <!-- Uncomment to make badges live (requires public repo):
-[![Codex](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/codex.json)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
-[![Claude Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/claude-code.json)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml)
+[![Codex](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/codex.json)](#benchmarks)
+[![Claude Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/claude-code.json)](#benchmarks)
 -->
 
-Agent skills for working with [Weights & Biases](https://wandb.ai). Explore projects, analyze runs, query metrics, and create reports — all from your coding agent.
+Skills to guide Claude Code, Codex, and other coding agents on using the [Weights & Biases](https://wandb.ai) AI developer platform to train models and build agents.
 
-## Supported Coding Agents
+### For model training
+- Log metrics and rich media during model training and fine-tuning
+- Track model training experiments
+- Analyze runs and experiment results to understand how the model is learning
+- Tune hyperparameters
 
-These skills can be installed for any agent supported by [`skills.sh`](https://skills.sh), [install](https://github.com/vercel-labs/skills).
+### For agent building
+- Trace agentic AI applications
+- Analyze traces and classify them into failure modes
+- Evaluate models with labeled datasets
+- Run online evaluations for production monitoring
 
-## Prerequisites
-
-- A [W&B API key](https://wandb.ai/authorize)
-
-## Installation
-
-### Quick Install
-
-Using [`npx skills`](https://github.com/vercel-labs/skills):
-
-**Local** (current project):
-```bash
-npx skills add wandb/skills --skill '*' --yes
-```
-
-**Global** (all projects):
-```bash
-npx skills add wandb/skills --skill '*' --yes --global
-```
-
-To link skills to a specific agent (e.g. Claude Code):
-```bash
-npx skills add wandb/skills --agent claude-code --skill '*' --yes --global
-```
-
-### Install Script (Claude Code only)
-
-Alternatively, clone the repo and use the install script:
+## Getting Started
 
 ```bash
-git clone https://github.com/wandb/skills.git
-cd skills
-
-# Install for Claude Code in current directory (default)
-./install.sh
-
-# Install for Claude Code globally
-./install.sh --global
-
-# Force reinstall without prompts
-./install.sh --force --yes
+npx skills add wandb/skills
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--global`, `-g` | Install globally instead of current directory |
-| `--force`, `-f` | Overwrite skills with same names as this package |
-| `--yes`, `-y` | Skip confirmation prompts |
-
-## Usage
-
-After installation, set your API key:
+Then set your [W&B API key](https://wandb.ai/authorize):
 
 ```bash
 export WANDB_API_KEY=<your-key>
 ```
 
-Then run your coding agent from the directory where you installed (for local installs) or from anywhere (for global installs).
+> `npx skills` is a utility for installing skills into major coding agent CLIs. Use `--global` to install for all projects, or `--agent <name>` to target a specific agent. See the [npx skills docs](https://github.com/vercel-labs/skills) for more details.
 
 ## Available Skills
 
 <!-- BEGIN SKILL TABLE -->
 | Skill | Description | Status |
 |-------|-------------|--------|
-| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (tr... | claude-code: 32/35 (91%) | codex: 25/35 (71%) |
+| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B and Weave SDK | claude-code: 32/35 (91%) | codex: 25/35 (71%) |
 <!-- END SKILL TABLE -->
 
-## Skill Format
+## Benchmarks
 
-Each skill is a directory under `skills/` with a `SKILL.md` file:
+We maintain a growing internal benchmark suite that evaluates each skill across coding agents and task categories. Skills are evaluated automatically on every merge to `main`.
 
-```
-skills/<name>/
-└── SKILL.md          # YAML frontmatter + instructions
-```
+| Category | Tasks | Claude Code (`sonnet4.6`) | Codex (`gpt-5.3-codex`) |
+|----------|-------|-------------|-------|
+| Weave analysis | 26 | 97%* | 63%* |
+| Weave tooling | 11 | 95%* | 83%* |
+| Model training | 8 | 90%* | 85%* |
+| LLM finetuning & RL analysis | 14 | 72%* | 86%* |
+| Failure & outlier detection | 8 | 86%* | 63%* |
 
-### SKILL.md structure
-
-```markdown
----
-name: my-skill
-description: One-line description of when to use this skill.
----
-
-# Skill Title
-
-Instructions, code patterns, and best practices for the agent...
-```
-
-The frontmatter requires `name` and `description`. The body contains instructions that get injected into the agent's context.
-
-## Evaluation
-
-Skills are automatically evaluated on merge to `main` using the [WandBAgentFactory](https://github.com/wandb/WandBAgentFactory) eval framework, benchmarked against both Codex and Claude Code agents. Results are tracked in [Weave](https://wandb.ai/site/weave).
+*Pass rates are +/- 3%. Many tasks span multiple categories.
 
 ## Contributing
 

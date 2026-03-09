@@ -6,7 +6,7 @@ name: Evaluate Skills
 # referencing those skills, generates a temp eval YAML, and runs it.
 # No changes needed in WandBAgentFactory to test new skills.
 #
-# Benchmarks against both Codex and Claude Code agents via matrix strategy.
+# Benchmarks against multiple agents via matrix strategy.
 
 on:
   push:
