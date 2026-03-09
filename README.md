@@ -55,15 +55,15 @@ export WANDB_API_KEY=<your-key>
 
 We maintain a growing internal benchmark suite that evaluates each skill across coding agents and task categories. Skills are evaluated automatically on every merge to `main`.
 
-| Category | Tasks |
-|----------|-------|
-| Weave analysis | 26 |
-| Weave tooling | 11 |
-| Model training | 8 |
-| LLM finetuning & RL analysis | 14 |
-| Failure & outlier detection | 8 |
+| Category | Tasks | Claude Code (`sonnet4.6`) | Codex (`gpt-5.3-codex`) |
+|----------|-------|-------------|-------|
+| Weave analysis | 26 | 97%* | 63%* |
+| Weave tooling | 11 | 95%* | 83%* |
+| Model training | 8 | 90%* | 85%* |
+| LLM finetuning & RL analysis | 14 | 72%* | 86%* |
+| Failure & outlier detection | 8 | 86%* | 63%* |
 
-*Many tasks span multiple categories.
+*Pass rates are +/- 3%. Many tasks span multiple categories.
 
 ## Contributing
 
