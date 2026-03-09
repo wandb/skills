@@ -17,24 +17,6 @@ on:
     branches: [main]
     paths: ["skills/**"]
 
-  workflow_dispatch:
-    inputs:
-      skills:
-        description: "Comma-separated skill names to test (blank = all in skills/)"
-        required: false
-        default: ""
-        type: string
-      base_agents:
-        description: 'JSON array of base agents, e.g. ["codex","claude-code"]'
-        required: false
-        default: ""
-        type: string
-      eval_tasks:
-        description: "Eval config name in WBAF (without .yaml; default: wba-all)"
-        required: false
-        default: "wba-all"
-        type: string
-
   schedule:
     # Weekly on Sundays at 11 PM PT (7 AM UTC Monday)
     - cron: "0 7 * * 1"
