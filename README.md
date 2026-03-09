@@ -79,7 +79,7 @@ Then run your coding agent from the directory where you installed (for local ins
 <!-- BEGIN SKILL TABLE -->
 | Skill | Description | Status |
 |-------|-------------|--------|
-| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (tr... | claude-code: 31/34 (91%) | codex: 25/34 (74%) |
+| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (tr... | claude-code: 32/35 (91%) | codex: 25/35 (71%) |
 <!-- END SKILL TABLE -->
 
 ## Skill Format
