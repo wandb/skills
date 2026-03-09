@@ -16,18 +16,12 @@ Skills to guide Claude Code, Codex, and other coding agents on using the [Weight
 - Track model training experiments
 - Analyze runs and experiment results to understand how the model is learning
 - Tune hyperparameters
-- Save model checkpoints and other artifacts
-- Track artifact lineage
-- Use the Registry for model and dataset lifecycle workflows, collaboration, and governance
 
 ### For agent building
 - Trace agentic AI applications
 - Analyze traces and classify them into failure modes
 - Evaluate models with labeled datasets
 - Run online evaluations for production monitoring
-- Turn production traces into test cases and add them to evaluation datasets
-- Build guardrails for agentic systems
-- Generate dynamic reports to communicate across teams
 
 ## Getting Started
 
