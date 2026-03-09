@@ -16,9 +16,10 @@ Give your coding agent the ability to work with [Weights & Biases](https://wandb
 - **Artifacts & datasets** — "Download the best model artifact from this project" / "List all datasets in my team's workspace"
 - **Reports & dashboards** — "Create a W&B report comparing these two experiments"
 
-## Supported Coding Agents
+## What can this skill do?
 
-These skills can be installed for any agent supported by [`skills.sh`](https://skills.sh), [install](https://github.com/vercel-labs/skills).
+This official distribution of the Weights and Biases skill is purpose-built to give your coding agent full-control over the WandB SDK. 
+Using this skill you can query runs, weave-traces, evaluations, triage errors, identify outliers, and much more. 
 
 ## Installation
 
