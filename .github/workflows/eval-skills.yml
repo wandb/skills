@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        base_agent: ${{ fromJson(inputs.base_agents || '["codex", "claude-code", "sonnet", "opus", "gpt-5.3-codex", "gpt-5.4"]') }}
+        base_agent: ${{ fromJson(inputs.base_agents || '["codex", "claude-code"]') }}
 
     env:
       WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
