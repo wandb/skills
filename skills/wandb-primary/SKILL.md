@@ -14,18 +14,17 @@ This skill covers everything an agent needs to work with Weights & Biases:
 - **W&B SDK** (`wandb`) — training runs, metrics, artifacts, sweeps, system metrics
 - **Weave SDK** (`weave`) — GenAI traces, evaluations, scorers, token usage
 - **Helper libraries** — `wandb_helpers.py` and `weave_helpers.py` for common operations
-- **High-level Weave API** (`weave_tools.weave_api`) — agent-friendly wrappers for Weave queries
 
 ## When to use what
 
 | I need to... | Use |
 |---|---|
 | Query training runs, loss curves, hyperparameters | **W&B SDK** (`wandb.Api()`) — see `references/WANDB_SDK.md` |
-| Query GenAI traces, calls, evaluations | **High-level Weave API** (`weave_tools.weave_api`) — see `references/WEAVE_API.md` |
+| Query GenAI traces, calls, evaluations | **Weave SDK** (`weave.init()`, `client.get_calls()`) — see `references/WEAVE_SDK.md` |
 | Convert Weave wrapper types to plain Python | **`weave_helpers.unwrap()`** |
 | Build a DataFrame from training runs | **`wandb_helpers.runs_to_dataframe()`** |
 | Extract eval results for analysis | **`weave_helpers.eval_results_to_dicts()`** |
-| Do something the high-level API doesn't cover | **Raw Weave SDK** (`weave.init()`, `client.get_calls()`) — see `references/WEAVE_SDK_RAW.md` |
+| Need low-level Weave filtering (CallsFilter, Query) | **Raw Weave SDK** (`weave.init()`, `client.get_calls()`) — see `references/WEAVE_SDK.md` |
 
 ---
 
@@ -60,9 +59,8 @@ from wandb_helpers import (
 
 Read these as needed — they contain full API surfaces and recipes:
 
-- **`references/WEAVE_API.md`** — High-level Weave API (`Project`, `Eval`, `CallsView`). Start here for Weave queries.
+- **`references/WEAVE_SDK.md`** — Weave SDK for GenAI traces (`client.get_calls()`, `CallsFilter`, `Query`, stats). Start here for Weave queries.
 - **`references/WANDB_SDK.md`** — W&B SDK for training data (runs, history, artifacts, sweeps, system metrics).
-- **`references/WEAVE_SDK_RAW.md`** — Low-level Weave SDK (`client.get_calls()`, `CallsFilter`). Use only when the high-level API isn't enough.
 
 ---
 
@@ -162,21 +160,7 @@ print(df.describe())
 
 For full W&B SDK reference (filters, history, artifacts, sweeps), read `references/WANDB_SDK.md`.
 
-### Weave — high-level API (preferred)
-
-```python
-import sys
-sys.path.insert(0, "skills/wandb-primary/scripts")
-from weave_tools.weave_api import init, Project
-
-init(f"{entity}/{project}")
-project = Project.current()
-print(project.summary())  # start here — shows ops, objects, evals, feedback
-```
-
-For full high-level API reference, read `references/WEAVE_API.md`.
-
-### Weave — raw SDK (when you need low-level access)
+### Weave — SDK
 
 ```python
 import weave
@@ -184,7 +168,7 @@ client = weave.init(f"{entity}/{project}")  # positional string, NOT keyword arg
 calls = client.get_calls(limit=10)
 ```
 
-For raw SDK patterns (CallsFilter, Query, advanced filtering), read `references/WEAVE_SDK_RAW.md`.
+For raw SDK patterns (CallsFilter, Query, advanced filtering), read `references/WEAVE_SDK.md`.
 
 ---
 
@@ -265,7 +249,7 @@ For structured failure analysis on eval results:
 3. **Axial coding** — write a second Scorer that classifies notes into a taxonomy
 4. **Summarize** — count primary labels with `collections.Counter`
 
-See `references/WEAVE_API.md` for the full `run_scorer` API.
+See `references/WEAVE_SDK.md` for the full SDK reference.
 
 ### W&B Reports
 
@@ -352,20 +336,10 @@ logging.getLogger("weave").setLevel(logging.ERROR)
 ## Quick reference
 
 ```python
-# --- Weave: How many traces? ---
-from weave_tools.weave_api import init, Project
-init(f"{entity}/{project}")
-project = Project.current()
-print(project.summary())
-
-# --- Weave: Recent evals ---
-evals = project.evals(limit=10)
-for ev in evals:
-    print(ev.summarize())
-
-# --- Weave: Failed calls ---
-calls = project.calls(op="predict")
-failed = calls.limit(1000).filter(lambda c: c.status == "error")
+# --- Weave: Init and get calls ---
+import weave
+client = weave.init(f"{entity}/{project}")
+calls = client.get_calls(limit=10)
 
 # --- W&B: Best run by loss ---
 best = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss")[:1]
