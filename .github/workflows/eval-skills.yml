@@ -12,11 +12,7 @@ on:
   push:
     branches: [main]
     paths: ["skills/**"]
-
-  pull_request:
-    branches: [main]
-    paths: ["skills/**"]
-
+    
   schedule:
     # Weekly on Sundays at 11 PM PT (7 AM UTC Monday)
     - cron: "0 7 * * 1"
