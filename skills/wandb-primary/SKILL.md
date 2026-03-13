@@ -1,11 +1,12 @@
 ---
-# SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
-# SPDX-License-Identifier: Apache-2.0
-# SPDX-PackageName: skills
-
 name: wandb-primary
-description: Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (training runs, metrics, artifacts, sweeps) and the Weave SDK (GenAI traces, evaluations, scorers). Includes helper libraries, gotcha tables, and data analysis patterns. Use this skill whenever the user asks about W&B runs, Weave traces, evaluations, training metrics, loss curves, model comparisons, or any Weights & Biases data — even if they don't say "W&B" explicitly.
+description: Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (training runs, metrics, artifacts, sweeps, reports) and the Weave SDK (GenAI traces, evaluations, scorers). Includes helper libraries, gotcha tables, and data analysis patterns. Use this skill whenever the user asks about W&B runs, Weave traces, evaluations, training metrics, loss curves, model comparisons, or any Weights & Biases data — even if they don't say "W&B" explicitly.
 ---
+<!--
+SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
+SPDX-License-Identifier: Apache-2.0
+SPDX-PackageName: skills
+-->
 
 # W&B Primary Skill
 
@@ -282,29 +283,40 @@ For structured failure analysis on eval results:
 
 See `references/WEAVE_SDK.md` for the full SDK reference.
 
-### W&B Reports
+## Report authoring (W&B Reports)
 
-Install `wandb[workspaces]` using the install command from the **Python environment detection** section.
+- Install the reports extra once. Use the environment-default python package manager to install `wandb[workspaces]` or default to:  `uv pip install "wandb[workspaces]"`.
+- Use `wandb.apis.reports` to create a report and save it.
+- `report.save(...)` is mutating; only call it when asked to publish.
+- Report widths: prefer `fixed` (medium). Other options: `readable` (narrow), `fluid` (full).
 
 ```python
 from wandb.apis import reports as wr
-import wandb_workspaces.expr as expr
 
-report = wr.Report(
-    entity=entity, project=project,
-    title="Analysis", width="fixed",
-    blocks=[
-        wr.H1(text="Results"),
-        wr.PanelGrid(
-            runsets=[wr.Runset(entity=entity, project=project)],
-            panels=[wr.LinePlot(title="Loss", x="_step", y=["loss"])],
-        ),
+runset = wr.Runset(entity=entity, project=project, name="All runs")
+plots = wr.PanelGrid(
+    runsets=[runset],
+    panels=[
+        wr.LinePlot(title="Loss", x="_step", y=["loss"]),
+        wr.BarPlot(title="Accuracy", metrics=["accuracy"], orientation="v"),
     ],
 )
-# report.save(draft=True)  # only when asked to publish
-```
 
-Use `expr.Config("lr")`, `expr.Summary("loss")`, `expr.Tags().isin([...])` for runset filters — not dot-path strings.
+report = wr.Report(
+    entity=entity,
+    project=project,
+    title="Project analysis",
+    description="Summary of recent runs",
+    width="fixed",
+    blocks=[
+        wr.H1(text="Project analysis"),
+        wr.P(text="Auto-generated summary from W&B API."),
+        plots,
+    ],
+)
+
+# report.save(draft=True)
+```
 
 ---
 
