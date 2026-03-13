@@ -149,6 +149,7 @@ jobs:
         run: |
           uv run python -W ignore -m core.run_eval \
             evals/ci-skill-eval.yaml \
+            --agent ${{ steps.setup.outputs.agent_name }} \
             --weave-parallelism 15 \
             2>&1 | tee eval-output.log
 
