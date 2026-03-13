@@ -42,7 +42,7 @@ export WANDB_API_KEY=<your-key>
 <!-- BEGIN SKILL TABLE -->
 | Skill | Description | Status |
 |-------|-------------|--------|
-| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B and Weave SDK | claude-code: 32/35 (91%) | codex: 25/35 (71%) |
+| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (tr... | evaluated |
 <!-- END SKILL TABLE -->
 
 ## Benchmarks
