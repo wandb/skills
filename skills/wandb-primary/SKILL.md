@@ -9,6 +9,46 @@ description: Comprehensive primary skill for agents working with Weights & Biase
 
 # W&B Primary Skill
 
+## Python environment detection (DO THIS FIRST)
+
+Before running any Python code, you MUST determine how the user runs Python in this project. Check for clues in this order:
+
+1. Look for `pyproject.toml`, `uv.lock`, `poetry.lock`, `Pipfile`, `requirements.txt`, `setup.py`, `setup.cfg`, `Makefile`, or `docker-compose.yml` in the project root
+2. Check if there is an activated virtual environment (`$VIRTUAL_ENV`, `.venv/`, `venv/`)
+3. Check for a `Dockerfile` or CI config that reveals the runtime
+4. If the user has explicitly told you how they run Python, use that
+
+Once you know the environment, **write your finding into this skill** by replacing the placeholder below so that all subsequent code blocks use the correct commands. If you cannot determine the environment from any of the above, default to `uv`.
+
+<!-- AGENT: Replace the content between the ENVIRONMENT markers with the detected environment -->
+<!-- ENVIRONMENT_START -->
+**Detected Python environment:** _not yet detected_
+
+```
+# Run command: <not yet detected>
+# Install command: <not yet detected>
+```
+<!-- ENVIRONMENT_END -->
+
+**Examples of what to write here:**
+
+| Environment | Run command | Install command |
+|---|---|---|
+| uv | `uv run script.py` | `uv pip install pandas` |
+| poetry | `poetry run python script.py` | `poetry add pandas` |
+| conda | `conda run python script.py` | `conda install pandas` |
+| bare venv | `python script.py` (with venv activated) | `pip install pandas` |
+| docker | `docker exec <ctr> python script.py` | `docker exec <ctr> pip install pandas` |
+
+**If you cannot determine the environment, write this:**
+
+```
+# Run command: uv run script.py        # always use uv run, never bare python
+# Install command: uv pip install <pkg>
+```
+
+---
+
 This skill covers everything an agent needs to work with Weights & Biases:
 
 - **W&B SDK** (`wandb`) — training runs, metrics, artifacts, sweeps, system metrics
@@ -116,7 +156,7 @@ This converts everything to plain Python dicts/lists that work with json, pandas
 
 ## Environment setup
 
-The sandbox has Python 3.13, `uv`, `wandb`, `weave`, `pandas`, and `numpy` pre-installed.
+The sandbox has `wandb`, `weave`, `pandas`, and `numpy` pre-installed.
 
 ```python
 import os
@@ -124,18 +164,9 @@ entity  = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
 ```
 
-### Installing extra packages
+### Installing extra packages and running scripts
 
-```bash
-uv pip install matplotlib seaborn rich tabulate
-```
-
-### Running scripts
-
-```bash
-uv run script.py          # always use uv run, never bare python
-uv run --with rich python -c "import rich; rich.print('hello')"
-```
+Use whichever run/install commands you wrote in the **Python environment detection** section above. If you haven't detected the environment yet, go back and do that first.
 
 ---
 
@@ -253,9 +284,7 @@ See `references/WEAVE_SDK.md` for the full SDK reference.
 
 ### W&B Reports
 
-```bash
-uv pip install "wandb[workspaces]"
-```
+Install `wandb[workspaces]` using the install command from the **Python environment detection** section.
 
 ```python
 from wandb.apis import reports as wr
@@ -316,11 +345,10 @@ Use `expr.Config("lr")`, `expr.Summary("loss")`, `expr.Tags().isin([...])` for r
 
 ### Package management
 
-| Gotcha | Wrong | Right |
-|--------|-------|-------|
-| Installing packages | `pip install pandas` | `uv pip install pandas` |
-| Running scripts | `python script.py` | `uv run script.py` |
-| Quick one-off | `pip install rich && python -c ...` | `uv run --with rich python -c ...` |
+| Gotcha | Details |
+|--------|---------|
+| Using the wrong runner | Always use the run/install commands from the **Python environment detection** section — never guess |
+| Bare `python` when env unknown | If you haven't detected the environment yet, default to `uv run script.py` (never bare `python`) |
 
 ### Weave logging noise
 
