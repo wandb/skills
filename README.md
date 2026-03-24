@@ -1,6 +1,5 @@
 # skills
 
-[![Evaluate Skills](https://github.com/wandb/skills/actions/workflows/eval-skills.yml/badge.svg?branch=main)](https://github.com/wandb/skills/actions/workflows/eval-skills.yml?query=branch%3Amain)
 [![Codex](https://img.shields.io/badge/codex-25%2F34%20(74%25)-yellow)](#benchmarks)
 [![Claude Code](https://img.shields.io/badge/claude--code-31%2F34%20(91%25)-brightgreen)](#benchmarks)
 
