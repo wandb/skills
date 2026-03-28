@@ -6,6 +6,8 @@ SPDX-PackageName: skills
 
 # Weave SDK Reference — Traces, Calls, Evaluations
 
+> **AGENT**: This document references the **Configuration table in SKILL.md** for entity, project, and LLM provider values. Use configured values, not hardcoded examples.
+
 Reference for querying Weave GenAI trace data using the `weave` Python SDK. Covers initialization, querying calls, filtering, MongoDB-style queries, server-side stats, and reading call data.
 
 **Key principle**: Weave traces can be large. Always use `unwrap()` to convert Weave wrapper types to plain Python, then load into pandas for analysis. Never dump raw call data into context.

@@ -1,6 +1,6 @@
 ---
 name: wandb-primary
-description: Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (training runs, metrics, artifacts, sweeps, reports) and the Weave SDK (GenAI traces, evaluations, scorers). Includes helper libraries, gotcha tables, and data analysis patterns. Use this skill whenever the user asks about W&B runs, Weave traces, evaluations, training metrics, loss curves, model comparisons, or any Weights & Biases data — even if they don't say "W&B" explicitly.
+description: The definitive skill for working with Weights & Biases (W&B / wandb). Use this skill whenever the user mentions W&B, wandb, Weights and Biases, Weave, training runs, experiment tracking, loss curves, metrics, hyperparameters, sweeps, artifacts, model registry, evaluation, traces, LLM observability, GenAI monitoring, scorers, or any W&B data — even if they don't say "W&B" explicitly. Covers everything across both products. W&B SDK (wandb Python package) for model training — logging runs, querying run history, comparing experiments, analyzing loss/accuracy/metrics, sweep analysis, artifact management, system metrics (GPU/CPU), and report authoring. Weave SDK for GenAI/LLM applications — tracing calls, evaluating models, scoring outputs, token usage, cost estimation, and failure analysis. Includes bundled helper libraries (wandb_helpers.py, weave_helpers.py) with optimized functions like fetch_runs (25x faster than raw SDK on large projects via GraphQL field selection), probe_project (auto-discovers project scale and available metrics), scan_history (smart parquet-backed history reading), diagnose_run (configurable training diagnostics), and eval_results_to_dicts (structured evaluation extraction). Handles projects of any size — from 10 runs to 100K+ runs with thousands of metrics per run. Begins with a brief interactive interview to configure the skill for the user's specific environment, metrics, and analysis goals before any work begins.
 ---
 <!--
 SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
@@ -10,43 +10,36 @@ SPDX-PackageName: skills
 
 # W&B Primary Skill
 
-## Python environment detection (DO THIS FIRST)
+## Configuration
 
-Before running any Python code, you MUST determine how the user runs Python in this project. Check for clues in this order:
+> **AGENT**: If `interview_completed` is `false`, you MUST read `references/INTERVIEW.md` and complete the interview before doing any other work. Do not guess — ask or detect.
 
-1. Look for `pyproject.toml`, `uv.lock`, `poetry.lock`, `Pipfile`, `requirements.txt`, `setup.py`, `setup.cfg`, `Makefile`, or `docker-compose.yml` in the project root
-2. Check if there is an activated virtual environment (`$VIRTUAL_ENV`, `.venv/`, `venv/`)
-3. Check for a `Dockerfile` or CI config that reveals the runtime
-4. If the user has explicitly told you how they run Python, use that
+<!-- CONFIGURATION_START -->
+| Key | Value |
+|-----|-------|
+| interview_completed | true |
+| python_run | uv run python |
+| python_install | uv add |
+| llm_provider | openai |
+| llm_model | gpt-5.4-mini |
+| llm_reasoning | high |
+| llm_endpoint | responses |
+<!-- CONFIGURATION_END -->
 
-Once you know the environment, **write your finding into this skill** by replacing the placeholder below so that all subsequent code blocks use the correct commands. If you cannot determine the environment from any of the above, default to `uv`.
+---
 
-<!-- AGENT: Replace the content between the ENVIRONMENT markers with the detected environment -->
-<!-- ENVIRONMENT_START -->
-**Detected Python environment:** _not yet detected_
+## CRITICAL: Large project performance rules
 
-```
-# Run command: <not yet detected>
-# Install command: <not yet detected>
-```
-<!-- ENVIRONMENT_END -->
+These rules prevent 502 errors, timeouts, and multi-minute hangs on projects with 10K+ runs or runs with 1K+ metrics. **Violating any of these will cause failures on large projects.**
 
-**Examples of what to write here:**
-
-| Environment | Run command | Install command |
-|---|---|---|
-| uv | `uv run script.py` | `uv pip install pandas` |
-| poetry | `poetry run python script.py` | `poetry add pandas` |
-| conda | `conda run python script.py` | `conda install pandas` |
-| bare venv | `python script.py` (with venv activated) | `pip install pandas` |
-| docker | `docker exec <ctr> python script.py` | `docker exec <ctr> pip install pandas` |
-
-**If you cannot determine the environment, write this:**
-
-```
-# Run command: uv run script.py        # always use uv run, never bare python
-# Install command: uv pip install <pkg>
-```
+1. **Always use `wandb.Api(timeout=60)`** — the default 19s timeout causes constant failures
+2. **NEVER call `history()` or `scan_history()` without explicit `keys=[...]`** — runs with 1K+ metrics will 502 or timeout when fetching all columns
+3. **Use `per_page=min(limit, 1000)`** when calling `api.runs()` — reduces pagination round-trips
+4. **Prefer server-side filters** (`summary_metrics.X: {$gt: Y}`) over client-side iteration
+5. **Avoid `len(runs)`** on large projects — it triggers an expensive count query (5s+). Use `runs[:N]` directly
+6. **Use `beta_scan_history`** for runs with 10K+ history steps — reads from parquet, not GraphQL
+7. **Never iterate all config keys** unless explicitly needed — access specific keys by name
+8. **Discover metric keys per-project** via `probe_project()` — never hardcode `"loss"` or `"accuracy"`
 
 ---
 
@@ -63,7 +56,7 @@ This skill covers everything an agent needs to work with Weights & Biases:
 | Query training runs, loss curves, hyperparameters | **W&B SDK** (`wandb.Api()`) — see `references/WANDB_SDK.md` |
 | Query GenAI traces, calls, evaluations | **Weave SDK** (`weave.init()`, `client.get_calls()`) — see `references/WEAVE_SDK.md` |
 | Convert Weave wrapper types to plain Python | **`weave_helpers.unwrap()`** |
-| Build a DataFrame from training runs | **`wandb_helpers.runs_to_dataframe()`** |
+| Build a DataFrame from training runs | **`wandb_helpers.fetch_runs()`** (fast) or **`wandb_helpers.runs_to_dataframe()`** |
 | Extract eval results for analysis | **`weave_helpers.eval_results_to_dicts()`** |
 | Need low-level Weave filtering (CallsFilter, Query) | **Raw Weave SDK** (`weave.init()`, `client.get_calls()`) — see `references/WEAVE_SDK.md` |
 
@@ -88,11 +81,15 @@ from weave_helpers import (
     eval_efficiency,         # Compute tokens-per-success across eval calls
 )
 
-# W&B helpers (training runs, metrics)
+# W&B helpers (training runs, metrics) — large-project optimized
 from wandb_helpers import (
-    runs_to_dataframe,       # Convert runs to a clean pandas DataFrame
-    diagnose_run,            # Quick diagnostic summary of a training run
-    compare_configs,         # Side-by-side config diff between two runs
+    get_api,             # Create API with safe timeout (default 60s)
+    probe_project,       # Discover project scale, metrics, config BEFORE querying
+    fetch_runs,          # FAST: Direct GraphQL with selective metrics (17x faster)
+    runs_to_dataframe,   # Legacy: iterate run objects (slower, use fetch_runs instead)
+    diagnose_run,        # Quick diagnostic summary (configurable metric keys)
+    compare_configs,     # Side-by-side config diff between two runs
+    scan_history,        # Smart history scan (auto-selects beta_scan_history for large runs)
 )
 ```
 
@@ -102,10 +99,40 @@ Read these as needed — they contain full API surfaces and recipes:
 
 - **`references/WEAVE_SDK.md`** — Weave SDK for GenAI traces (`client.get_calls()`, `CallsFilter`, `Query`, stats). Start here for Weave queries.
 - **`references/WANDB_SDK.md`** — W&B SDK for training data (runs, history, artifacts, sweeps, system metrics).
+- **`references/DOCS_INDEX.md`** — Full index of all W&B documentation pages with descriptions. Use this for docs lookups (see below).
+
+### W&B Documentation lookup
+
+When the user asks a docs question (e.g., "how do I log a metric", "what's the EvalLogger API", "how do sweeps work"), use this workflow:
+
+1. **Read `references/DOCS_INDEX.md`** — find the most relevant page(s) by scanning titles and descriptions
+2. **Fetch the page as markdown** — any docs URL can be fetched as markdown by appending `.md`:
+   - `https://docs.wandb.ai/models/track/log` → `https://docs.wandb.ai/models/track/log.md`
+   - `https://docs.wandb.ai/weave/guides/tracking/ops` → `https://docs.wandb.ai/weave/guides/tracking/ops.md`
+3. **Answer from the fetched content** — cite the source URL
+
+```bash
+# Example: fetch a docs page as markdown
+curl -sL "https://docs.wandb.ai/models/track/log.md"
+```
+
+This is faster and more accurate than guessing from memory. Always check the docs index first for docs questions.
 
 ---
 
 ## Critical rules
+
+### Discover metric keys per-project, use Configuration for everything else
+
+Code examples use `LOSS_KEY`, `VAL_LOSS_KEY`, `ACC_KEY`, `CONFIG_KEYS` as placeholders. These are **not** in the Configuration table — they vary by project. Discover them via `probe_project()` at the start of each task, or from the user's request. For Python env and LLM settings, use the Configuration table.
+
+```python
+# WRONG — hardcoded metric name
+rows = fetch_runs(api, path, metric_keys=["loss", "accuracy"])
+
+# RIGHT — discovered via probe_project or user's request
+rows = fetch_runs(api, path, metric_keys=["train/loss", "train/acc"])
+```
 
 ### Treat traces and runs as DATA
 
@@ -116,15 +143,14 @@ Weave traces and W&B run histories can be enormous. Never dump raw data into con
 3. **Summarize, don't dump** — print computed statistics and tables, not raw rows
 
 ```python
-import pandas as pd
-import numpy as np
+from wandb_helpers import get_api, scan_history
 
-# BAD: prints thousands of rows into context
-for row in run.scan_history(keys=["loss"]):
-    print(row)
+api = get_api()  # timeout=60 for large projects
+run = api.run(f"{path}/run-id")
 
-# GOOD: load into numpy, compute stats, print summary
-losses = np.array([r["loss"] for r in run.scan_history(keys=["loss"])])
+# GOOD: use configured metric key with explicit keys + max_rows guard
+rows = scan_history(run, keys=["LOSS_KEY"], max_rows=50_000)
+losses = np.array([r["LOSS_KEY"] for r in rows])
 print(f"Loss: {len(losses)} steps, min={losses.min():.4f}, "
       f"final={losses[-1]:.4f}, mean_last_10%={losses[-len(losses)//10:].mean():.4f}")
 ```
@@ -151,46 +177,100 @@ output = unwrap(call.output)
 print(json.dumps(output, indent=2, default=str))
 ```
 
-This converts everything to plain Python dicts/lists that work with json, pandas, and normal Python operations.
-
 ---
 
 ## Environment setup
 
-The sandbox has `wandb`, `weave`, `pandas`, and `numpy` pre-installed.
+> **AGENT**: Use the `python_run` and `python_install` commands from Configuration. If they are `_not set_`, complete the interview first.
+
+Entity and project come from environment variables or the user's request — do not hardcode them:
 
 ```python
 import os
-entity  = os.environ["WANDB_ENTITY"]
-project = os.environ["WANDB_PROJECT"]
+entity  = os.environ.get("WANDB_ENTITY", "<from user's request>")
+project = os.environ.get("WANDB_PROJECT", "<from user's request>")
+path = f"{entity}/{project}"
 ```
 
-### Installing extra packages and running scripts
+### Installing extra packages
 
-Use whichever run/install commands you wrote in the **Python environment detection** section above. If you haven't detected the environment yet, go back and do that first.
+```bash
+# Use the configured install command:
+<python_install> pandas numpy
+```
+
+### Running scripts
+
+```bash
+# Use the configured run command:
+<python_run> script.py
+```
 
 ---
 
 ## Quick starts
 
+### Step 0: Probe the project (DO THIS FIRST on unfamiliar projects)
+
+```python
+from wandb_helpers import get_api, probe_project
+
+api = get_api()  # timeout=60
+path = "{entity}/{project}"  # ← from Configuration
+
+info = probe_project(api, path)
+print(f"Metrics per run: {info['sample_metric_count']}")
+print(f"Has step history: {info['has_step_history']}")
+print(f"Recommended per_page: {info['recommended_per_page']}")
+print(f"Sample metrics: {info['sample_metric_keys'][:10]}")
+if info['warnings']:
+    print(f"WARNINGS: {info['warnings']}")
+```
+
 ### W&B SDK — training runs
 
 ```python
-import wandb
 import pandas as pd
-api = wandb.Api()
+from wandb_helpers import get_api, fetch_runs
 
-path = f"{entity}/{project}"
-runs = api.runs(path, filters={"state": "finished"}, order="-created_at")
+api = get_api()
+path = "{entity}/{project}"
 
-# Convert to DataFrame (always slice — never list() all runs)
-from wandb_helpers import runs_to_dataframe
-rows = runs_to_dataframe(runs, limit=100, metric_keys=["loss", "val_loss", "accuracy"])
+# fetch_runs uses GraphQL field selection — 15-25x faster on large projects
+rows = fetch_runs(
+    api, path,
+    metric_keys=["LOSS_KEY", "ACC_KEY"],  # ← from Configuration
+    filters={"state": "finished"},
+    limit=100,
+)
 df = pd.DataFrame(rows)
 print(df.describe())
 ```
 
-For full W&B SDK reference (filters, history, artifacts, sweeps), read `references/WANDB_SDK.md`.
+### W&B SDK — find best runs (server-side)
+
+```python
+api = get_api()
+best = api.runs(path, filters={"state": "finished"},
+                order="+summary_metrics.LOSS_KEY", per_page=10)[:10]
+for run in best:
+    print(f"  {run.name}: {run.summary_metrics.get('LOSS_KEY')}")
+```
+
+### W&B SDK — history analysis (single run)
+
+```python
+from wandb_helpers import get_api, scan_history
+import numpy as np
+
+api = get_api()
+run = api.run(f"{path}/run-id")
+
+# ALWAYS use explicit keys from Configuration
+rows = scan_history(run, keys=["LOSS_KEY", "VAL_LOSS_KEY"])
+losses = np.array([r.get("LOSS_KEY") for r in rows if r.get("LOSS_KEY") is not None])
+print(f"Loss: {len(losses)} steps, min={losses.min():.6f}, final={losses[-1]:.6f}")
+```
 
 ### Weave — SDK
 
@@ -205,6 +285,35 @@ For raw SDK patterns (CallsFilter, Query, advanced filtering), read `references/
 ---
 
 ## Key patterns
+
+### Run diagnostics
+
+```python
+from wandb_helpers import get_api, diagnose_run
+
+api = get_api()
+run = api.run(f"{path}/run-id")
+
+# Use configured metric keys
+diag = diagnose_run(run, train_key="LOSS_KEY", val_key="VAL_LOSS_KEY")
+for k, v in diag.items():
+    print(f"  {k}: {v}")
+```
+
+### Cross-run metric search (server-side)
+
+On large projects, **never iterate all runs client-side**. Use server-side filters with configured metric keys:
+
+```python
+api = get_api()
+
+# Find runs where primary loss is below threshold
+runs = api.runs(path, filters={
+    "summary_metrics.LOSS_KEY": {"$lt": 0.5}
+}, per_page=50)
+for run in runs[:50]:
+    print(f"  {run.name}: {run.summary_metrics.get('LOSS_KEY')}")
+```
 
 ### Weave eval inspection
 
@@ -224,7 +333,6 @@ Extract per-task results into a DataFrame:
 ```python
 from weave_helpers import eval_results_to_dicts, results_summary
 
-# pas_calls = list of predict_and_score call objects
 results = eval_results_to_dicts(pas_calls, agent_name="my-agent")
 print(results_summary(results))
 
@@ -232,20 +340,9 @@ df = pd.DataFrame(results)
 print(df.groupby("passed")["score"].mean())
 ```
 
-### Eval health and efficiency
-
-```python
-from weave_helpers import eval_health, eval_efficiency
-
-health = eval_health(eval_calls)
-df = pd.DataFrame(health)
-print(df.to_string(index=False))
-
-efficiency = eval_efficiency(eval_calls)
-print(pd.DataFrame(efficiency).to_string(index=False))
-```
-
 ### Token usage
+
+> **AGENT**: The token field names vary by LLM provider. `get_token_usage()` handles both OpenAI and Anthropic conventions automatically.
 
 ```python
 from weave_helpers import get_token_usage
@@ -254,57 +351,26 @@ usage = get_token_usage(call)
 print(f"Tokens: {usage['total_tokens']} (in={usage['input_tokens']}, out={usage['output_tokens']})")
 ```
 
-### Cost estimation
+### Report authoring (W&B Reports)
 
 ```python
-call_with_costs = client.get_call("id", include_costs=True)
-costs = call_with_costs.summary.get("weave", {}).get("costs", {})
-```
+# Install the reports extra using configured install command:
+# <python_install> "wandb[workspaces]"
 
-### Run diagnostics
-
-```python
-from wandb_helpers import diagnose_run
-
-run = api.run(f"{path}/run-id")
-diag = diagnose_run(run)
-for k, v in diag.items():
-    print(f"  {k}: {v}")
-```
-
-### Error analysis — open coding to axial coding
-
-For structured failure analysis on eval results:
-
-1. **Understand data shape** — use `project.summary()`, `calls.input_shape()`, `calls.output_shape()`
-2. **Open coding** — write a Weave Scorer that journals what went wrong per failing call
-3. **Axial coding** — write a second Scorer that classifies notes into a taxonomy
-4. **Summarize** — count primary labels with `collections.Counter`
-
-See `references/WEAVE_SDK.md` for the full SDK reference.
-
-## Report authoring (W&B Reports)
-
-- Install the reports extra once. Use the environment-default python package manager to install `wandb[workspaces]` or default to:  `uv pip install "wandb[workspaces]"`.
-- Use `wandb.apis.reports` to create a report and save it.
-- `report.save(...)` is mutating; only call it when asked to publish.
-- Report widths: prefer `fixed` (medium). Other options: `readable` (narrow), `fluid` (full).
-
-```python
 from wandb.apis import reports as wr
 
-runset = wr.Runset(entity=entity, project=project, name="All runs")
+runset = wr.Runset(entity="<wandb_entity>", project="<wandb_project>", name="All runs")
 plots = wr.PanelGrid(
     runsets=[runset],
     panels=[
-        wr.LinePlot(title="Loss", x="_step", y=["loss"]),
-        wr.BarPlot(title="Accuracy", metrics=["accuracy"], orientation="v"),
+        wr.LinePlot(title="Loss", x="_step", y=["LOSS_KEY"]),
+        wr.BarPlot(title="Accuracy", metrics=["ACC_KEY"], orientation="v"),
     ],
 )
 
 report = wr.Report(
-    entity=entity,
-    project=project,
+    entity="<wandb_entity>",
+    project="<wandb_project>",
     title="Project analysis",
     description="Summary of recent runs",
     width="fixed",
@@ -337,34 +403,22 @@ report = wr.Report(
 | Eval success count | `summary["success_count"]` | `summary["weave"]["status_counts"]["success"]` |
 | When in doubt | Guess the type | `unwrap()` first, then inspect |
 
-### WeaveDict vs WeaveObject
-
-- **WeaveDict**: dict-like, supports `.get()`, `.keys()`, `[]`. Used for: `call.inputs`, `call.output`, `scores` dict
-- **WeaveObject**: attribute-based, use `getattr()`. Used for: scorer results (rubric), dataset rows
-- **When in doubt**: use `unwrap()` to convert everything to plain Python
-
 ### W&B API
 
 | Gotcha | Wrong | Right |
 |--------|-------|-------|
-| Summary access | `run.summary["loss"]` | `run.summary_metrics.get("loss")` |
+| API timeout | `wandb.Api()` (19s default) | `wandb.Api(timeout=60)` or `get_api()` |
+| Summary access | `run.summary["loss"]` | `run.summary_metrics.get("LOSS_KEY")` |
 | Loading all runs | `list(api.runs(...))` | `runs[:200]` (always slice) |
-| History — all fields | `run.history()` | `run.history(samples=500, keys=["loss"])` |
-| scan_history — no keys | `scan_history()` | `scan_history(keys=["loss"])` (explicit) |
-| Raw data in context | `print(run.history())` | Load into DataFrame, compute stats |
-| Metric at step N | iterate entire history | `scan_history(keys=["loss"], min_step=N, max_step=N+1)` |
-| Cache staleness | reading live run | `api.flush()` first |
-
-### Package management
-
-| Gotcha | Details |
-|--------|---------|
-| Using the wrong runner | Always use the run/install commands from the **Python environment detection** section — never guess |
-| Bare `python` when env unknown | If you haven't detected the environment yet, default to `uv run script.py` (never bare `python`) |
+| Counting runs | `len(api.runs(...))` on large project | Skip count, just `runs[:N]` |
+| Pagination | `api.runs(path)` (per_page=50 default) | `api.runs(path, per_page=min(N, 1000))` |
+| History — no keys on large run | `run.history(samples=10)` → **502** | `run.history(samples=10, keys=["LOSS_KEY"])` |
+| scan_history — no keys | `scan_history()` → timeout | `scan_history(keys=["LOSS_KEY"])` |
+| Large history (10K+ steps) | `scan_history(keys=[...])` | `beta_scan_history(keys=[...])` (parquet) |
+| Config iteration | `for k,v in run.config.items()` | Use `config_keys` from Configuration |
+| Cross-run search | iterate all runs client-side | Server-side filter: `{"summary_metrics.X": {"$gt": Y}}` |
 
 ### Weave logging noise
-
-Weave prints version warnings to stderr. Suppress with:
 
 ```python
 import logging
@@ -376,21 +430,35 @@ logging.getLogger("weave").setLevel(logging.ERROR)
 ## Quick reference
 
 ```python
+from wandb_helpers import get_api, fetch_runs, scan_history
+import pandas as pd
+import numpy as np
+
+api = get_api()
+path = "{entity}/{project}"
+
 # --- Weave: Init and get calls ---
 import weave
 client = weave.init(f"{entity}/{project}")
 calls = client.get_calls(limit=10)
 
-# --- W&B: Best run by loss ---
-best = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss")[:1]
-print(f"Best: {best[0].name}, loss={best[0].summary_metrics.get('loss')}")
+# --- W&B: Best run (server-side sort) ---
+best = api.runs(path, filters={"state": "finished"},
+                order="+summary_metrics.LOSS_KEY", per_page=1)[:1]
+print(f"Best: {best[0].name}, loss={best[0].summary_metrics.get('LOSS_KEY')}")
 
 # --- W&B: Loss curve to numpy ---
-losses = np.array([r["loss"] for r in run.scan_history(keys=["loss"])])
+rows = scan_history(run, keys=["LOSS_KEY"])
+losses = np.array([r["LOSS_KEY"] for r in rows])
 print(f"min={losses.min():.6f}, final={losses[-1]:.6f}, steps={len(losses)}")
+
+# --- W&B: Runs to DataFrame (selective) ---
+df = pd.DataFrame(fetch_runs(api, path,
+    metric_keys=["LOSS_KEY", "ACC_KEY"],
+    filters={"state": "finished"}, limit=100))
 
 # --- W&B: Compare two runs ---
 from wandb_helpers import compare_configs
-diffs = compare_configs(run_a, run_b)
+diffs = compare_configs(run_a, run_b, keys=CONFIG_KEYS)
 print(pd.DataFrame(diffs).to_string(index=False))
 ```
