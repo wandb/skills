@@ -285,13 +285,13 @@ See `references/WEAVE_SDK.md` for the full SDK reference.
 
 ## Report authoring (W&B Reports)
 
-- Install the reports extra once. Use the environment-default python package manager to install `wandb[workspaces]` or default to:  `uv pip install "wandb[workspaces]"`.
-- Use `wandb.apis.reports` to create a report and save it.
-- `report.save(...)` is mutating; only call it when asked to publish.
-- Report widths: prefer `fixed` (medium). Other options: `readable` (narrow), `fluid` (full).
+- Install the workspaces/reports extra once. Use the environment-default python package manager to install `wandb-workspaces` or default to:  `uv pip install wandb-workspaces`.
+- Import as `import wandb_workspaces.reports.v2 as wr`. Do NOT use the legacy `wandb.apis.reports` path.
+- `report.save(...)` is mutating; only call it when asked to publish. Pass `draft=True` to save without publishing.
+- Report widths: `"readable"` (narrow), `"fixed"` (medium), `"fluid"` (full viewport).
 
 ```python
-from wandb.apis import reports as wr
+import wandb_workspaces.reports.v2 as wr
 
 runset = wr.Runset(entity=entity, project=project, name="All runs")
 plots = wr.PanelGrid(
@@ -299,6 +299,8 @@ plots = wr.PanelGrid(
     panels=[
         wr.LinePlot(title="Loss", x="_step", y=["loss"]),
         wr.BarPlot(title="Accuracy", metrics=["accuracy"], orientation="v"),
+        wr.ScatterPlot(title="LR vs Loss", x=wr.Config("lr"), y=wr.SummaryMetric("loss")),
+        wr.ScalarChart(title="F1", metric="f1_score"),
     ],
 )
 
@@ -317,6 +319,61 @@ report = wr.Report(
 
 # report.save(draft=True)
 ```
+
+- Runset filtering: `wr.Runset(..., filters="Config('lr') <= 0.001 and State = 'finished'")`.
+- Other block types: `wr.H2`, `wr.H3`, `wr.CodeBlock(code="...", language="python")`, `wr.MarkdownBlock(text="...")`, `wr.Image(url="...")`, `wr.TableOfContents()`, `wr.HorizontalRule()`.
+- Other panels: `wr.CodeComparer`, `wr.ParallelCoordinatesPlot`, `wr.ParameterImportancePlot`, `wr.RunComparer`, `wr.MediaBrowser`, `wr.MarkdownPanel`.
+- Load existing: `report = wr.Report.from_url("https://wandb.ai/entity/project/reports/Title--id")`.
+- Panel sizing: any panel accepts `layout=wr.Layout(x=0, y=0, w=8, h=6)`.
+
+---
+
+# Workspace modification (W&B Workspaces)
+
+- Install the workspaces/reports extra once. Use the environment-default python package manager to install `wandb-workspaces` or default to:  `uv pip install wandb-workspaces`.
+- Import as `import wandb_workspaces.workspaces as ws`. Panels are shared with reports (`wr.LinePlot`, etc.).
+- `workspace.save()` upserts. Use `workspace.save_as_new_view()` to create a copy.
+
+```python
+import wandb_workspaces.workspaces as ws
+import wandb_workspaces.reports.v2 as wr
+from wandb_workspaces import expr
+
+workspace = ws.Workspace(
+    entity=entity,
+    project=project,
+    name="Training Overview",
+    sections=[
+        ws.Section(
+            name="Loss Curves",
+            panels=[
+                wr.LinePlot(x="Step", y=["train_loss", "val_loss"]),
+                wr.ScalarChart(metric="best_accuracy"),
+            ],
+            is_open=True,
+        ),
+    ],
+    settings=ws.WorkspaceSettings(
+        x_axis="Step",
+        smoothing_type="exponential",  # "exponential" | "gaussian" | "average" | "none"
+        smoothing_weight=50,
+        ignore_outliers=True,
+        max_runs=20,
+    ),
+    runset_settings=ws.RunsetSettings(
+        filters="Config('experiment') = 'ablation_v2'",
+        groupby=[expr.Config("model_type")],
+    ),
+)
+
+# workspace.save()
+```
+
+- Load existing: `workspace = ws.Workspace.from_url("https://wandb.ai/entity/project?nw=abc123")`.
+- Section options: `is_open` (bool), `pinned` (bool), `layout_settings=ws.SectionLayoutSettings(columns=3, rows=2)`, `panel_settings=ws.SectionPanelSettings(x_axis="Step")`.
+- Run settings: `ws.RunsetSettings(run_settings={"run_id": ws.RunSettings(color="red", disabled=False)})`.
+- Filtering: same string syntax as reports, or `[expr.Config("lr") == 0.001, expr.Summary("acc") >= 0.9]`.
+- Pinned columns: `ws.RunsetSettings(pinned_columns=["summary:accuracy", "config:lr"])`.
 
 ---
 
