@@ -1,0 +1,637 @@
+# Weights & Biases Documentation
+
+## Docs
+
+- [Create Chat Completion](https://docs.wandb.ai/api-reference/chat-completions/create-chat-completion.md): Create a new chat completion.
+- [Create Chat Completion](https://docs.wandb.ai/api-reference/chat-completions/create-chat-completion-1.md): Create a new chat completion.
+- [Health Check](https://docs.wandb.ai/api-reference/health/health-check.md)
+- [System Check](https://docs.wandb.ai/api-reference/health/system-check.md): Check health of all system components.
+- [Create Model](https://docs.wandb.ai/api-reference/models/create-model.md): Create a new model.
+- [Delete Model](https://docs.wandb.ai/api-reference/models/delete-model.md): Delete a model, all its checkpoints, artifacts, and the associated W&B run.
+- [Delete Model Checkpoints](https://docs.wandb.ai/api-reference/models/delete-model-checkpoints.md): Delete specific checkpoints for a model.
+- [List Model Checkpoints](https://docs.wandb.ai/api-reference/models/list-model-checkpoints.md)
+- [Log](https://docs.wandb.ai/api-reference/models/log.md): Log trajectories and calculate metrics.
+- [Create Rl Training Job](https://docs.wandb.ai/api-reference/training-jobs/create-rl-training-job.md): Create a new RL (Reinforcement Learning) training job.
+- [Create Sft Training Job](https://docs.wandb.ai/api-reference/training-jobs/create-sft-training-job.md): Create a new SFT (Supervised Fine-Tuning) training job.
+- [Get Training Job](https://docs.wandb.ai/api-reference/training-jobs/get-training-job.md): Get a training job by ID.
+- [Get Training Job Events](https://docs.wandb.ai/api-reference/training-jobs/get-training-job-events.md): Get events for a training job.
+- [W&B Tutorials & Blog](https://docs.wandb.ai/blog.md)
+- [W&B Courses](https://docs.wandb.ai/courses.md)
+- [Get Started with Weights & Biases](https://docs.wandb.ai/get-started.md): Choose the right W&B product for your use case and learn how to get started
+- [Weights & Biases Documentation](https://docs.wandb.ai/index.md): View the documentation for all Weights & Biases products
+- [W&B Inference](https://docs.wandb.ai/inference.md): Access open-source foundation models through W&B Weave and an OpenAI-compatible API
+- [API Overview](https://docs.wandb.ai/inference/api-reference.md): Explore the complete REST API reference for the W&B Inference service, including endpoints and authentication.
+- [Chat Completions](https://docs.wandb.ai/inference/api-reference/chat-completions.md): Create chat completions using the OpenAI-compatible endpoint
+- [List Models](https://docs.wandb.ai/inference/api-reference/list-models.md): Retrieve a list of all available W&B Inference models and their IDs using the models API endpoint.
+- [Usage Examples](https://docs.wandb.ai/inference/examples.md): Learn how to use W&B Inference with practical code examples
+- [Model Lifecycle](https://docs.wandb.ai/inference/lifecycle.md): Learn about W&B Inference model lifecycle and retirement
+- [Use Serverless LoRA Inference](https://docs.wandb.ai/inference/lora.md): Bring your own custom LoRA for serving fine-tuned models on W&B Inference.
+- [Available Models](https://docs.wandb.ai/inference/models.md): Browse the foundation models available through W&B Inference
+- [Prerequisites](https://docs.wandb.ai/inference/prerequisites.md): Set up your environment, API key, and dependencies before using the W&B Inference service through the API or UI.
+- [Enable JSON mode](https://docs.wandb.ai/inference/response-settings/json-mode.md): Configure JSON mode in W&B Inference to get structured JSON output from model responses for easier parsing.
+- [View reasoning information](https://docs.wandb.ai/inference/response-settings/reasoning.md): How to return and view reasoning in your W&B Inference responses
+- [Enable streaming responses](https://docs.wandb.ai/inference/response-settings/streaming.md): Enable streaming output with W&B Inference to receive model responses incrementally as they are generated.
+- [Enable structured output](https://docs.wandb.ai/inference/response-settings/structured-output.md): How to configure structured output in W&B Inference responses
+- [Call tools](https://docs.wandb.ai/inference/response-settings/tool-calling.md): Use function and tool calling with W&B Inference to let models invoke external tools and APIs during generation.
+- [Creating a fine-tuned LoRA](https://docs.wandb.ai/inference/tutorials/creating-lora.md): Learn how to create a fine-tuned LoRA to use with W&B Inference.
+- [Cline with W&B Inference](https://docs.wandb.ai/inference/tutorials/integration-cline.md): Learn how to configure the Cline coding agent to use W&B Inference.
+- [UI Guide](https://docs.wandb.ai/inference/ui-guide.md): Access W&B Inference models through the web interface
+- [Usage Information and Limits](https://docs.wandb.ai/inference/usage-limits.md): Understand pricing, usage limits, and account restrictions for W&B Inference
+- [W&B Models](https://docs.wandb.ai/models.md): Use W&B Models for experiment tracking, dataset versioning, model management, and collaborative ML development.
+- [Console logs](https://docs.wandb.ai/models/app/console-logs.md): View and debug console log messages including info, warnings, and errors from your W&B experiment runs.
+- [Manage workspace, section, and panel settings](https://docs.wandb.ai/models/app/features/cascade-settings.md): Manage workspace, section, and panel settings in the W&B App, including layout and line plot configuration options.
+- [Custom charts overview](https://docs.wandb.ai/models/app/features/custom-charts.md): Create custom charts in W&B projects with Vega visualizations
+- [Tutorial: Use custom charts](https://docs.wandb.ai/models/app/features/custom-charts/walkthrough.md): Tutorial of using the custom charts feature in the W&B UI
+- [Panels](https://docs.wandb.ai/models/app/features/panels.md): Use and customize workspace panels to visualize your logged data
+- [Bar plots](https://docs.wandb.ai/models/app/features/panels/bar-plot.md): Visualize metrics, customize axes, and compare categorical data as bars.
+- [Save and diff code](https://docs.wandb.ai/models/app/features/panels/code.md): Enable code saving, compare code across W&B runs with the code comparer, and capture Jupyter session history.
+- [Line plots overview](https://docs.wandb.ai/models/app/features/panels/line-plot.md): Visualize metrics, customize axes, and compare multiple lines on a plot
+- [Line plot reference](https://docs.wandb.ai/models/app/features/panels/line-plot/reference.md): Reference for line plot panel settings including x-axis, y-axis, smoothing, aggregation, and grouping options.
+- [Point aggregation](https://docs.wandb.ai/models/app/features/panels/line-plot/sampling.md): Understand the two point aggregation modes for W&B line plots: full fidelity bucketed sampling and random sampling.
+- [Smooth line plots](https://docs.wandb.ai/models/app/features/panels/line-plot/smoothing.md): In line plots, use smoothing to see trends in noisy data.
+- [Media panels](https://docs.wandb.ai/models/app/features/panels/media.md): Add and configure media panels for images, video, audio, 3D objects, and point clouds in a W&B workspace.
+- [Parallel coordinates](https://docs.wandb.ai/models/app/features/panels/parallel-coordinates.md): Compare results across machine learning experiments
+- [Parameter importance](https://docs.wandb.ai/models/app/features/panels/parameter-importance.md): Visualize the relationships between your model's hyperparameters and output metrics
+- [Query panels overview](https://docs.wandb.ai/models/app/features/panels/query-panels.md): Some features on this page are in beta, hidden behind a feature flag. Add `weave-plot` to your bio on your profile page to unlock all related features.
+- [Embed objects](https://docs.wandb.ai/models/app/features/panels/query-panels/embedding-projector.md): W&B's Embedding Projector allows users to plot multi-dimensional embeddings on a 2D plane using common dimension reduction algorithms like PCA, UMAP, and t-SNE.
+- [Compare run metrics](https://docs.wandb.ai/models/app/features/panels/run-comparer.md): Use the Run Comparer panel to view and compare configuration and metric differences across W&B experiment runs.
+- [Scatter plots](https://docs.wandb.ai/models/app/features/panels/scatter-plot.md): Create and customize scatter plots in W&B to compare runs and visualize relationships between experiment metrics.
+- [Keyboard shortcuts](https://docs.wandb.ai/models/app/keyboard-shortcuts.md): Learn about the keyboard shortcuts available in W&B.
+- [Artifacts overview](https://docs.wandb.ai/models/artifacts.md): Overview of W&B Artifacts, how they work, and how to get started using them.
+- [Tutorial: Create, track, and use a dataset artifact](https://docs.wandb.ai/models/artifacts/artifacts-walkthrough.md): Create, track, and use a dataset artifact with W&B.
+- [Create an artifact](https://docs.wandb.ai/models/artifacts/construct-an-artifact.md): Create and log a W&B Artifact. Learn how to add one or more files or a URI reference to an Artifact.
+- [Create an artifact alias](https://docs.wandb.ai/models/artifacts/create-a-custom-alias.md): Create and manage custom aliases to reference specific W&B artifact versions by meaningful names like best or production.
+- [Create an artifact version](https://docs.wandb.ai/models/artifacts/create-a-new-artifact-version.md): Create a new artifact version from a single run or from a distributed process.
+- [Artifact data privacy and compliance](https://docs.wandb.ai/models/artifacts/data-privacy-and-compliance.md): Learn where W&B files are stored by default. Explore how to save, store sensitive information.
+- [Delete an artifact](https://docs.wandb.ai/models/artifacts/delete-artifacts.md): Delete artifacts interactively with the App UI or programmatically with the W&B Python SDK.
+- [Download and use artifacts](https://docs.wandb.ai/models/artifacts/download-and-use-an-artifact.md): Download and use Artifacts from multiple projects.
+- [Explore artifact lineage graphs](https://docs.wandb.ai/models/artifacts/explore-and-traverse-an-artifact-graph.md): View and traverse artifact lineage graphs to track the inputs and outputs of W&B runs as a directed acyclic graph.
+- [Manage artifact storage and memory allocation](https://docs.wandb.ai/models/artifacts/storage.md): Manage storage, memory allocation of W&B Artifacts.
+- [Track external files](https://docs.wandb.ai/models/artifacts/track-external-files.md): Track files saved in an external bucket, HTTP file server, or an NFS share.
+- [Manage artifact data retention](https://docs.wandb.ai/models/artifacts/ttl.md): Set time-to-live (TTL) policies on W&B artifacts to schedule automatic deletion and manage storage consumption.
+- [Update an artifact](https://docs.wandb.ai/models/artifacts/update-an-artifact.md): Update an existing Artifact inside and outside of a W&B Run.
+- [Automations overview](https://docs.wandb.ai/models/automations.md): Use W&B Automations for triggering workflows based on events in W&B
+- [Automation events and scopes](https://docs.wandb.ai/models/automations/automation-events.md): Learn about events and scopes that trigger W&B Automations, including artifact changes, run status, and metric conditions.
+- [Overview](https://docs.wandb.ai/models/automations/create-automations.md): Create and manage W&B automations to streamline your ML workflows
+- [Create a Slack automation](https://docs.wandb.ai/models/automations/create-automations/slack.md): Set up a Slack integration and create a W&B Automation that sends notifications to a Slack channel on specific events.
+- [Create a webhook automation](https://docs.wandb.ai/models/automations/create-automations/webhook.md): Create a webhook automation in W&B to send HTTP requests to external services when specific events occur.
+- [View an automation's history](https://docs.wandb.ai/models/automations/view-automation-history.md): View the execution history of your W&B Automations to check status, triggering events, and action results.
+- [Integrations overview](https://docs.wandb.ai/models/integrations.md): Explore W&B integrations with ML frameworks, cloud platforms, and workflow orchestration tools
+- [Hugging Face Accelerate](https://docs.wandb.ai/models/integrations/accelerate.md): Training and inference at scale made simple, efficient and adaptable
+- [Add W&B to a Python library](https://docs.wandb.ai/models/integrations/add-wandb-to-any-library.md): Best practices for integrating Weights & Biases into your Python library for experiment tracking, system monitoring, and model management.
+- [Azure OpenAI Fine-Tuning](https://docs.wandb.ai/models/integrations/azure-openai-fine-tuning.md): Fine-tune Azure OpenAI models with W&B experiment tracking to log metrics, hyperparameters, and training progress.
+- [Hugging Face Diffusers](https://docs.wandb.ai/models/integrations/diffusers.md): Use W&B autolog with Hugging Face Diffusers to track prompts, generated media, configs, and pipeline architecture.
+- [Hugging Face](https://docs.wandb.ai/models/integrations/huggingface.md): Visualize and track Hugging Face model performance with W&B, logging hyperparameters, metrics, and GPU utilization.
+- [Hugging Face Transformers](https://docs.wandb.ai/models/integrations/huggingface_transformers.md): Use W&B with Hugging Face Transformers Trainer for experiment tracking, model checkpointing, and dataset versioning.
+- [Hydra](https://docs.wandb.ai/models/integrations/hydra.md): Integrate W&B with Hydra to manage complex configurations for ML experiments and log hyperparameters automatically.
+- [PyTorch Ignite](https://docs.wandb.ai/models/integrations/ignite.md): Integrate W&B with PyTorch Ignite to automatically log training metrics, model parameters, and experiment configs.
+- [Keras](https://docs.wandb.ai/models/integrations/keras.md): Use W&B Keras callbacks to track experiments, checkpoint models, and visualize predictions during training.
+- [PyTorch Lightning](https://docs.wandb.ai/models/integrations/lightning.md): Use W&B with PyTorch Lightning through the built-in WandbLogger for experiment tracking and model checkpointing.
+- [OpenAI API](https://docs.wandb.ai/models/integrations/openai-api.md): Use W&B with the OpenAI API to log and monitor chat completions, fine-tuning jobs, and token usage metrics.
+- [OpenAI Fine-Tuning](https://docs.wandb.ai/models/integrations/openai-fine-tuning.md): Fine-tune OpenAI models with W&B to log training metrics, monitor jobs, and compare model performance over time.
+- [OpenAI Gym](https://docs.wandb.ai/models/integrations/openai-gym.md): Integrate W&B with OpenAI Gym to track reinforcement learning experiments and record episode performance videos.
+- [PyTorch](https://docs.wandb.ai/models/integrations/pytorch.md): Integrate W&B with PyTorch for experiment tracking, dataset versioning, and logging of metrics, gradients, and models.
+- [PyTorch Geometric](https://docs.wandb.ai/models/integrations/pytorch-geometric.md): Integrate W&B with PyTorch Geometric for graph visualization and experiment tracking in geometric deep learning.
+- [Hugging Face Simple Transformers](https://docs.wandb.ai/models/integrations/simpletransformers.md): How to integrate W&B with the Transformers library by Hugging Face.
+- [TensorFlow](https://docs.wandb.ai/models/integrations/tensorflow.md): Integrate W&B with TensorFlow for logging custom metrics, using estimator hooks, and TensorBoard log synchronization.
+- [PyTorch torchtune](https://docs.wandb.ai/models/integrations/torchtune.md): Use W&B logging in PyTorch torchtune for tracking LLM fine-tuning experiments with the WandBLogger metric logger.
+- [XGBoost](https://docs.wandb.ai/models/integrations/xgboost.md): Integrate W&B with XGBoost to log gradient boosting metrics, feature importance, and model performance automatically.
+- [YOLOv5](https://docs.wandb.ai/models/integrations/yolov5.md): Use the built-in W&B integration in YOLOv5 for experiment tracking, model versioning, and prediction visualization.
+- [YOLOX](https://docs.wandb.ai/models/integrations/yolox.md): Integrate W&B with YOLOX to track object detection model training, log metrics, and visualize detection results.
+- [LLM Evaluation Jobs](https://docs.wandb.ai/models/launch.md): Evaluate model checkpoints or hosted API models within W&B and analyze the results using automatically generated leaderboards.
+- [Evaluate a hosted API model](https://docs.wandb.ai/models/launch/evaluate-hosted-model.md): Evaluate a hosted API model using infrastructure managed by CoreWeave
+- [Evaluate a model checkpoint](https://docs.wandb.ai/models/launch/evaluate-model-checkpoint.md): Evaluate a VLLM-compatible model checkpoint using infrastructure managed by CoreWeave
+- [Evaluation benchmark catalog](https://docs.wandb.ai/models/launch/evaluations.md): Browse the evaluation benchmarks available through LLM Evaluation Jobs
+- [Get Started with W&B Models](https://docs.wandb.ai/models/models_quickstart.md): Get started with W&B Models by tracking experiments, logging metrics, and visualizing results in a few lines of code.
+- [W&B Quickstart](https://docs.wandb.ai/models/quickstart.md): Install W&B and start tracking, visualizing, and managing machine learning experiments in minutes.
+- [Reference overview](https://docs.wandb.ai/models/ref.md): Browse the generated API reference documentation for the W&B Python SDK, CLI, and query panel data types.
+- [CLI Reference SDK 0.25.1](https://docs.wandb.ai/models/ref/cli.md): Use the W&B Command Line Interface (CLI) to log in, run jobs, execute sweeps, and more using shell commands
+- [wandb agent](https://docs.wandb.ai/models/ref/cli/wandb-agent.md)
+- [wandb artifact](https://docs.wandb.ai/models/ref/cli/wandb-artifact.md)
+- [wandb artifact cache](https://docs.wandb.ai/models/ref/cli/wandb-artifact/wandb-artifact-cache.md)
+- [wandb artifact cache cleanup](https://docs.wandb.ai/models/ref/cli/wandb-artifact/wandb-artifact-cache/wandb-artifact-cache-cleanup.md)
+- [wandb artifact get](https://docs.wandb.ai/models/ref/cli/wandb-artifact/wandb-artifact-get.md)
+- [wandb artifact ls](https://docs.wandb.ai/models/ref/cli/wandb-artifact/wandb-artifact-ls.md)
+- [wandb artifact put](https://docs.wandb.ai/models/ref/cli/wandb-artifact/wandb-artifact-put.md)
+- [wandb beta](https://docs.wandb.ai/models/ref/cli/wandb-beta.md)
+- [wandb beta leet](https://docs.wandb.ai/models/ref/cli/wandb-beta/wandb-beta-leet.md)
+- [wandb beta leet config](https://docs.wandb.ai/models/ref/cli/wandb-beta/wandb-beta-leet/wandb-beta-leet-config.md)
+- [wandb beta leet run](https://docs.wandb.ai/models/ref/cli/wandb-beta/wandb-beta-leet/wandb-beta-leet-run.md)
+- [wandb beta sync](https://docs.wandb.ai/models/ref/cli/wandb-beta/wandb-beta-sync.md)
+- [wandb controller](https://docs.wandb.ai/models/ref/cli/wandb-controller.md)
+- [wandb disabled](https://docs.wandb.ai/models/ref/cli/wandb-disabled.md)
+- [wandb docker](https://docs.wandb.ai/models/ref/cli/wandb-docker.md)
+- [wandb docker-run](https://docs.wandb.ai/models/ref/cli/wandb-docker-run.md)
+- [wandb enabled](https://docs.wandb.ai/models/ref/cli/wandb-enabled.md)
+- [wandb init](https://docs.wandb.ai/models/ref/cli/wandb-init.md)
+- [wandb job](https://docs.wandb.ai/models/ref/cli/wandb-job.md)
+- [wandb job create](https://docs.wandb.ai/models/ref/cli/wandb-job/wandb-job-create.md)
+- [wandb job describe](https://docs.wandb.ai/models/ref/cli/wandb-job/wandb-job-describe.md)
+- [wandb job list](https://docs.wandb.ai/models/ref/cli/wandb-job/wandb-job-list.md)
+- [wandb local](https://docs.wandb.ai/models/ref/cli/wandb-local.md)
+- [wandb login](https://docs.wandb.ai/models/ref/cli/wandb-login.md)
+- [wandb off](https://docs.wandb.ai/models/ref/cli/wandb-off.md)
+- [wandb offline](https://docs.wandb.ai/models/ref/cli/wandb-offline.md)
+- [wandb on](https://docs.wandb.ai/models/ref/cli/wandb-on.md)
+- [wandb online](https://docs.wandb.ai/models/ref/cli/wandb-online.md)
+- [wandb projects](https://docs.wandb.ai/models/ref/cli/wandb-projects.md)
+- [wandb pull](https://docs.wandb.ai/models/ref/cli/wandb-pull.md)
+- [wandb purge-cache](https://docs.wandb.ai/models/ref/cli/wandb-purge-cache.md)
+- [wandb restore](https://docs.wandb.ai/models/ref/cli/wandb-restore.md)
+- [wandb server](https://docs.wandb.ai/models/ref/cli/wandb-server.md)
+- [wandb server start](https://docs.wandb.ai/models/ref/cli/wandb-server/wandb-server-start.md)
+- [wandb server stop](https://docs.wandb.ai/models/ref/cli/wandb-server/wandb-server-stop.md)
+- [wandb status](https://docs.wandb.ai/models/ref/cli/wandb-status.md)
+- [wandb sweep](https://docs.wandb.ai/models/ref/cli/wandb-sweep.md)
+- [wandb sync](https://docs.wandb.ai/models/ref/cli/wandb-sync.md)
+- [wandb verify](https://docs.wandb.ai/models/ref/cli/wandb-verify.md)
+- [Python SDK 0.25.0](https://docs.wandb.ai/models/ref/python.md): Browse the W&B Python SDK API reference including installation instructions, classes, and function documentation.
+- [Automations overview](https://docs.wandb.ai/models/ref/python/automations.md): Use the W&B Automations API to create and manage automated workflows in your ML pipelines
+- [Automation](https://docs.wandb.ai/models/ref/python/automations/automation.md)
+- [DoNothing](https://docs.wandb.ai/models/ref/python/automations/donothing.md)
+- [MetricChangeFilter](https://docs.wandb.ai/models/ref/python/automations/metricchangefilter.md)
+- [MetricThresholdFilter](https://docs.wandb.ai/models/ref/python/automations/metricthresholdfilter.md)
+- [MetricZScoreFilter](https://docs.wandb.ai/models/ref/python/automations/metriczscorefilter.md)
+- [NewAutomation](https://docs.wandb.ai/models/ref/python/automations/newautomation.md)
+- [OnAddArtifactAlias](https://docs.wandb.ai/models/ref/python/automations/onaddartifactalias.md)
+- [OnCreateArtifact](https://docs.wandb.ai/models/ref/python/automations/oncreateartifact.md)
+- [OnLinkArtifact](https://docs.wandb.ai/models/ref/python/automations/onlinkartifact.md)
+- [OnRunMetric](https://docs.wandb.ai/models/ref/python/automations/onrunmetric.md)
+- [OnRunState](https://docs.wandb.ai/models/ref/python/automations/onrunstate.md)
+- [RunStateFilter](https://docs.wandb.ai/models/ref/python/automations/runstatefilter.md)
+- [SendNotification](https://docs.wandb.ai/models/ref/python/automations/sendnotification.md)
+- [SendWebhook](https://docs.wandb.ai/models/ref/python/automations/sendwebhook.md)
+- [Custom Charts overview](https://docs.wandb.ai/models/ref/python/custom-charts.md): Use custom charts in the W&B Python SDK for interactive visualizations in project dashboards
+- [bar()](https://docs.wandb.ai/models/ref/python/custom-charts/bar.md)
+- [confusion_matrix()](https://docs.wandb.ai/models/ref/python/custom-charts/confusion_matrix.md)
+- [histogram](https://docs.wandb.ai/models/ref/python/custom-charts/histogram.md)
+- [line()](https://docs.wandb.ai/models/ref/python/custom-charts/line.md)
+- [line_series()](https://docs.wandb.ai/models/ref/python/custom-charts/line_series.md)
+- [plot_table()](https://docs.wandb.ai/models/ref/python/custom-charts/plot_table.md)
+- [pr_curve()](https://docs.wandb.ai/models/ref/python/custom-charts/pr_curve.md)
+- [roc_curve()](https://docs.wandb.ai/models/ref/python/custom-charts/roc_curve.md)
+- [scatter()](https://docs.wandb.ai/models/ref/python/custom-charts/scatter.md)
+- [Data Types overview](https://docs.wandb.ai/models/ref/python/data-types.md): Data Types in the W&B Python SDK for logging media and structured data
+- [Audio](https://docs.wandb.ai/models/ref/python/data-types/audio.md)
+- [box3d()](https://docs.wandb.ai/models/ref/python/data-types/box3d.md)
+- [Histogram](https://docs.wandb.ai/models/ref/python/data-types/histogram.md)
+- [Html](https://docs.wandb.ai/models/ref/python/data-types/html.md)
+- [Image](https://docs.wandb.ai/models/ref/python/data-types/image.md)
+- [Molecule](https://docs.wandb.ai/models/ref/python/data-types/molecule.md)
+- [Object3D](https://docs.wandb.ai/models/ref/python/data-types/object3d.md)
+- [Plotly](https://docs.wandb.ai/models/ref/python/data-types/plotly.md)
+- [Table](https://docs.wandb.ai/models/ref/python/data-types/table.md)
+- [Video](https://docs.wandb.ai/models/ref/python/data-types/video.md)
+- [Experiments overview](https://docs.wandb.ai/models/ref/python/experiments.md): Use foundational classes in the W&B Python SDK for tracking experiments and managing artifacts
+- [Artifact](https://docs.wandb.ai/models/ref/python/experiments/artifact.md)
+- [Run](https://docs.wandb.ai/models/ref/python/experiments/run.md)
+- [Settings](https://docs.wandb.ai/models/ref/python/experiments/settings.md)
+- [System Metrics Reference](https://docs.wandb.ai/models/ref/python/experiments/system-metrics.md): Metrics automatically logged by W&B.
+- [Global Functions overview](https://docs.wandb.ai/models/ref/python/functions.md): Global functions in the W&B Python SDK
+- [agent()](https://docs.wandb.ai/models/ref/python/functions/agent.md)
+- [controller()](https://docs.wandb.ai/models/ref/python/functions/controller.md)
+- [finish()](https://docs.wandb.ai/models/ref/python/functions/finish.md)
+- [init()](https://docs.wandb.ai/models/ref/python/functions/init.md)
+- [login()](https://docs.wandb.ai/models/ref/python/functions/login.md)
+- [restore()](https://docs.wandb.ai/models/ref/python/functions/restore.md)
+- [setup()](https://docs.wandb.ai/models/ref/python/functions/setup.md)
+- [sweep()](https://docs.wandb.ai/models/ref/python/functions/sweep.md)
+- [teardown()](https://docs.wandb.ai/models/ref/python/functions/teardown.md)
+- [Public API overview](https://docs.wandb.ai/models/ref/python/public-api.md): Use the W&B Public API to programmatically access and manage W&B data
+- [Api](https://docs.wandb.ai/models/ref/python/public-api/api.md)
+- [ArtifactCollection](https://docs.wandb.ai/models/ref/python/public-api/artifactcollection.md)
+- [ArtifactCollections](https://docs.wandb.ai/models/ref/python/public-api/artifactcollections.md)
+- [ArtifactFiles](https://docs.wandb.ai/models/ref/python/public-api/artifactfiles.md)
+- [Artifacts](https://docs.wandb.ai/models/ref/python/public-api/artifacts.md)
+- [ArtifactType](https://docs.wandb.ai/models/ref/python/public-api/artifacttype.md)
+- [ArtifactTypes](https://docs.wandb.ai/models/ref/python/public-api/artifacttypes.md)
+- [Automations](https://docs.wandb.ai/models/ref/python/public-api/automations.md)
+- [BetaReport](https://docs.wandb.ai/models/ref/python/public-api/betareport.md)
+- [DownloadHistoryResult](https://docs.wandb.ai/models/ref/python/public-api/downloadhistoryresult.md)
+- [File](https://docs.wandb.ai/models/ref/python/public-api/file.md)
+- [Files](https://docs.wandb.ai/models/ref/python/public-api/files.md)
+- [IncompleteRunHistoryError](https://docs.wandb.ai/models/ref/python/public-api/incompleterunhistoryerror.md)
+- [Member](https://docs.wandb.ai/models/ref/python/public-api/member.md)
+- [Project](https://docs.wandb.ai/models/ref/python/public-api/project.md)
+- [ProjectArtifactCollections](https://docs.wandb.ai/models/ref/python/public-api/projectartifactcollections.md)
+- [Projects](https://docs.wandb.ai/models/ref/python/public-api/projects.md)
+- [Registry](https://docs.wandb.ai/models/ref/python/public-api/registry.md)
+- [Reports](https://docs.wandb.ai/models/ref/python/public-api/reports.md)
+- [Run](https://docs.wandb.ai/models/ref/python/public-api/run.md)
+- [RunArtifacts](https://docs.wandb.ai/models/ref/python/public-api/runartifacts.md)
+- [Runs](https://docs.wandb.ai/models/ref/python/public-api/runs.md)
+- [Sweep](https://docs.wandb.ai/models/ref/python/public-api/sweep.md)
+- [Sweeps](https://docs.wandb.ai/models/ref/python/public-api/sweeps.md)
+- [Team](https://docs.wandb.ai/models/ref/python/public-api/team.md)
+- [User](https://docs.wandb.ai/models/ref/python/public-api/user.md)
+- [Query Expression Language overview](https://docs.wandb.ai/models/ref/query-panel.md): A beta query language to select and aggregate data in W&B
+- [artifact](https://docs.wandb.ai/models/ref/query-panel/artifact.md)
+- [artifactType](https://docs.wandb.ai/models/ref/query-panel/artifact-type.md)
+- [artifactVersion](https://docs.wandb.ai/models/ref/query-panel/artifact-version.md)
+- [audio-file](https://docs.wandb.ai/models/ref/query-panel/audio-file.md)
+- [bokeh-file](https://docs.wandb.ai/models/ref/query-panel/bokeh-file.md)
+- [boolean](https://docs.wandb.ai/models/ref/query-panel/boolean.md)
+- [entity](https://docs.wandb.ai/models/ref/query-panel/entity.md)
+- [file](https://docs.wandb.ai/models/ref/query-panel/file.md)
+- [float](https://docs.wandb.ai/models/ref/query-panel/float.md)
+- [html-file](https://docs.wandb.ai/models/ref/query-panel/html-file.md)
+- [image-file](https://docs.wandb.ai/models/ref/query-panel/image-file.md)
+- [int](https://docs.wandb.ai/models/ref/query-panel/int.md)
+- [joined-table](https://docs.wandb.ai/models/ref/query-panel/joined-table.md)
+- [molecule-file](https://docs.wandb.ai/models/ref/query-panel/molecule-file.md)
+- [number](https://docs.wandb.ai/models/ref/query-panel/number.md)
+- [object3D-file](https://docs.wandb.ai/models/ref/query-panel/object-3-d-file.md)
+- [partitioned-table](https://docs.wandb.ai/models/ref/query-panel/partitioned-table.md)
+- [project](https://docs.wandb.ai/models/ref/query-panel/project.md)
+- [pytorch-model-file](https://docs.wandb.ai/models/ref/query-panel/pytorch-model-file.md)
+- [run](https://docs.wandb.ai/models/ref/query-panel/run.md)
+- [string](https://docs.wandb.ai/models/ref/query-panel/string.md)
+- [table](https://docs.wandb.ai/models/ref/query-panel/table.md)
+- [user](https://docs.wandb.ai/models/ref/query-panel/user.md)
+- [video-file](https://docs.wandb.ai/models/ref/query-panel/video-file.md)
+- [W&B SDK Python coding cheat sheet](https://docs.wandb.ai/models/ref/sdk-coding-cheat-sheet.md): Quick reference for common W&B Python SDK patterns and code examples
+- [Artifacts](https://docs.wandb.ai/models/ref/sdk-coding-cheat-sheet/artifacts.md): Create, update, download, and manage W&B Artifacts for data versioning.
+- [Logging](https://docs.wandb.ai/models/ref/sdk-coding-cheat-sheet/logging.md): Log metrics, hyperparameters, tables, and custom data to W&B.
+- [Registry](https://docs.wandb.ai/models/ref/sdk-coding-cheat-sheet/registry.md): Work with W&B Model Registry to organize and manage model versions.
+- [Runs](https://docs.wandb.ai/models/ref/sdk-coding-cheat-sheet/runs.md): Initialize and manage W&B runs to organize your experiments and track your work.
+- [Reports](https://docs.wandb.ai/models/ref/wandb_workspaces/reports.md)
+- [Workspaces](https://docs.wandb.ai/models/ref/wandb_workspaces/workspaces.md)
+- [Registry overview](https://docs.wandb.ai/models/registry.md): W&B Registry to manage and share artifact versions across your organization
+- [Reference an artifact version with aliases](https://docs.wandb.ai/models/registry/aliases.md): Use default, custom, and protected aliases to reference specific artifact versions in W&B Registry.
+- [Configure registry access](https://docs.wandb.ai/models/registry/configure_registry.md): Configure W&B Registry access by managing users and teams, assigning roles, and setting role-based permissions.
+- [Create a collection](https://docs.wandb.ai/models/registry/create_collection.md): Create a collection of linked artifact versions within a W&B Registry and configure accepted artifact types.
+- [Create a registry](https://docs.wandb.ai/models/registry/create_registry.md): Create a W&B Registry with configurable visibility and accepted artifact types using the App UI or Python SDK.
+- [Delete registry](https://docs.wandb.ai/models/registry/delete_registry.md): Delete a W&B Registry as a Team admin or Registry admin using the Python SDK or the W&B App UI.
+- [Download an artifact from a registry](https://docs.wandb.ai/models/registry/download_use_artifact.md): Download an artifact linked to a W&B Registry collection by constructing its path and using the Python SDK.
+- [Lineage graphs and audit history](https://docs.wandb.ai/models/registry/lineage.md): Use lineage graphs to visualize a linked artifact's history and audit a collection's history.
+- [Link an artifact version to a collection](https://docs.wandb.ai/models/registry/link_version.md): Link an artifact version to a collection in W&B Registry to share it across your organization.
+- [Organize versions with tags](https://docs.wandb.ai/models/registry/organize-with-tags.md): Use tags to organize collections or artifact versions within collections. You can add, remove, edit tags with the Python SDK or W&B App UI.
+- [Annotate collections](https://docs.wandb.ai/models/registry/registry_cards.md): Add descriptions and documentation to W&B Registry collections to help users understand their purpose and contents.
+- [Find registry items](https://docs.wandb.ai/models/registry/search_registry.md): Learn how to search for registries, collections, and artifact versions in the W&B Registry using the global search bar or queries.
+- [Reports overview](https://docs.wandb.ai/models/reports.md): Project management and collaboration tools for machine learning projects
+- [Clone and export reports](https://docs.wandb.ai/models/reports/clone-and-export-reports.md): Export W&B Reports as PDF or LaTeX files, and clone reports using the App UI or the Report and Workspace API.
+- [Collaborate on reports](https://docs.wandb.ai/models/reports/collaborate-on-reports.md): Collaborate and share W&B Reports with peers, co-workers, and your team.
+- [Create a report](https://docs.wandb.ai/models/reports/create-a-report.md): Create a W&B Report with the W&B App or programmatically.
+- [Compare runs across projects](https://docs.wandb.ai/models/reports/cross-project-reports.md): Compare runs from two different projects with cross-project reports.
+- [Edit a report](https://docs.wandb.ai/models/reports/edit-a-report.md): Edit a report interactively with the App UI or programmatically with the W&B SDK.
+- [Embed a report](https://docs.wandb.ai/models/reports/embed-reports.md): Embed W&B reports directly into Notion or with an HTML IFrame element.
+- [Example reports](https://docs.wandb.ai/models/reports/reports-gallery.md): Explore example W&B Reports showcasing use cases like experiment summaries, team collaboration, and sharing findings.
+- [Overview](https://docs.wandb.ai/models/runs.md): Learn about the basic building block of W&B, Runs.
+- [Send an alert](https://docs.wandb.ai/models/runs/alert.md): Send alerts, triggered from your Python code, to your Slack or email
+- [Semantic run plot legends](https://docs.wandb.ai/models/runs/color-code-runs.md): Color-code W&B runs based on metrics or config parameters to create visually meaningful chart legends.
+- [Pin and compare runs](https://docs.wandb.ai/models/runs/compare-runs.md): Learn how to use pinned and baseline runs to keep track of important runs and efficiently evaluate model experiments.
+- [View runs in a project](https://docs.wandb.ai/models/runs/customize-run-display.md): Details about customizing how runs are displayed in your project's runs table
+- [Delete runs](https://docs.wandb.ai/models/runs/delete-runs.md): Learn how to delete runs from a W&B project using the W&B App.
+- [Filter runs](https://docs.wandb.ai/models/runs/filter-runs.md): Learn how to filter runs in the Runs table using the expression editor.
+- [Fork a run](https://docs.wandb.ai/models/runs/forking.md): Explore different parameters or models from a specific point in an experiment without impacting the original run.
+- [Organize runs](https://docs.wandb.ai/models/runs/grouping.md): Organize your runs into groups and other properties.
+- [Visualize CoreWeave infrastructure alerts](https://docs.wandb.ai/models/runs/infrastructure-alerts.md): View CoreWeave infrastructure alerts such as GPU failures and thermal violations on your W&B experiment run plots.
+- [Initialize runs](https://docs.wandb.ai/models/runs/initialize-run.md): Initialize W&B runs with wandb.init() to start tracking experiments, including handling concurrent runs in one process.
+- [Move a run to a different project or team](https://docs.wandb.ai/models/runs/manage-runs.md): Move runs between projects or teams using the W&B App.
+- [Resume a run](https://docs.wandb.ai/models/runs/resuming.md): Resume paused, stopped, or crashed W&B runs using the resume parameter options in wandb.init().
+- [Rewind a run](https://docs.wandb.ai/models/runs/rewind.md): Rewind a run to correct or modify its history without losing original data.
+- [Customize run colors](https://docs.wandb.ai/models/runs/run-colors.md): Customize, randomize, and reset the colors assigned to individual runs in your W&B project workspace.
+- [Find and customize a run's ID or name](https://docs.wandb.ai/models/runs/run-identifiers.md): Learn how to find a run's unique identifier and run name, how to create a custom run ID, and how to customize a run's name.
+- [Run states](https://docs.wandb.ai/models/runs/run-states.md): Learn about the different states a W&B run can have.
+- [Search runs](https://docs.wandb.ai/models/runs/search-runs.md): Learn how to search for specific runs by name or ID in your project's Runs table or Workspace.
+- [Stop runs](https://docs.wandb.ai/models/runs/stop-runs.md): Stop runs programmatically using the W&B Python SDK or manually from the W&B App.
+- [Add labels to runs with tags](https://docs.wandb.ai/models/runs/tags.md): Add, update, and remove tags on W&B runs using the Python SDK, Public API, or the W&B App UI for organization.
+- [View a specific run in a project](https://docs.wandb.ai/models/runs/view-logged-runs.md): Learn how to view a specific logged run and its properties using the W&B App or the LEET terminal UI.
+- [Sweeps overview](https://docs.wandb.ai/models/sweeps.md): Hyperparameter search and model optimization with W&B Sweeps
+- [Add W&B (wandb) to your code](https://docs.wandb.ai/models/sweeps/add-w-and-b-to-your-code.md): Add W&B to your Python code script or Jupyter Notebook.
+- [Overview](https://docs.wandb.ai/models/sweeps/define-sweep-configuration.md): Learn how to create configuration files for sweeps.
+- [Tutorial: Create sweep job from project](https://docs.wandb.ai/models/sweeps/existing-project.md): Tutorial on how to create sweep jobs from a pre-existing W&B project.
+- [Initialize a sweep](https://docs.wandb.ai/models/sweeps/initialize-sweeps.md): Initialize a W&B Sweep using the Python SDK or CLI to start hyperparameter searches with your sweep configuration.
+- [Manage algorithms locally](https://docs.wandb.ai/models/sweeps/local-controller.md): Search and stop algorithms locally instead of using the W&B cloud-hosted service.
+- [Parallelize agents](https://docs.wandb.ai/models/sweeps/parallelize-agents.md): Parallelize W&B Sweep agents on multi-core or multi-GPU machine.
+- [Manage sweeps](https://docs.wandb.ai/models/sweeps/pause-resume-and-cancel-sweeps.md): Pause, resume, and cancel a W&B Sweep with the CLI.
+- [Start a sweep agent](https://docs.wandb.ai/models/sweeps/start-sweep-agents.md): Start or stop a W&B Sweep Agent on one or more machines.
+- [Sweep configuration options](https://docs.wandb.ai/models/sweeps/sweep-config-keys.md): Reference for all W&B Sweep configuration keys including method, metric, parameters, early termination, and command.
+- [Sweeps troubleshooting](https://docs.wandb.ai/models/sweeps/troubleshoot-sweeps.md): Troubleshoot common W&B Sweep issues including CommError, CUDA out of memory, and wandb agent failures.
+- [Learn more about sweeps](https://docs.wandb.ai/models/sweeps/useful-resources.md): Find links to academic papers, example reports, tutorials, and the Sweeps GitHub repository for further learning.
+- [Visualize sweep results](https://docs.wandb.ai/models/sweeps/visualize-sweep-results.md): Visualize the results of your W&B Sweeps with the W&B App UI.
+- [Tutorial: Define, initialize, and run a sweep](https://docs.wandb.ai/models/sweeps/walkthrough.md): Sweeps quickstart shows how to define, initialize, and run a sweep. There are four main steps
+- [Tables overview](https://docs.wandb.ai/models/tables.md): Iterate on datasets and understand model predictions
+- [Log tables](https://docs.wandb.ai/models/tables/log_tables.md): Create and log W&B Tables with different logging modes including immutable, mutable, and incremental using the Python SDK.
+- [Export table data](https://docs.wandb.ai/models/tables/tables-download.md): Export W&B Table data to pandas DataFrames and CSV files for offline analysis and data processing.
+- [Example tables](https://docs.wandb.ai/models/tables/tables-gallery.md): Explore example W&B Tables projects for image classification, audio, text analysis, and other use cases.
+- [Tutorial: Log tables, visualize and query data](https://docs.wandb.ai/models/tables/tables-walkthrough.md): Explore how to use W&B Tables with this 5 minute Quickstart.
+- [Visualize and analyze tables](https://docs.wandb.ai/models/tables/visualize-tables.md): Compare, filter, group, sort, and visualize W&B Tables data in merged or side-by-side views for analysis.
+- [Experiments overview](https://docs.wandb.ai/models/track.md): Track machine learning experiments with W&B to log metrics, hyperparameters, system metrics, and model artifacts.
+- [Configure experiments](https://docs.wandb.ai/models/track/config.md): Use a dictionary-like object to save your experiment configuration
+- [Create an experiment](https://docs.wandb.ai/models/track/create-an-experiment.md): Create a W&B Experiment using the Python SDK to track run initialization, hyperparameters, and metric logging.
+- [Environment variables](https://docs.wandb.ai/models/track/environment-variables.md): Configure W&B SDK behavior using environment variables for authentication, project settings, logging modes, and more.
+- [Track Jupyter notebooks](https://docs.wandb.ai/models/track/jupyter.md): Use W&B with Jupyter to get interactive visualizations without leaving your notebook.
+- [Experiments limits and performance](https://docs.wandb.ai/models/track/limits.md): Keep your pages in W&B faster and more responsive by logging within these suggested bounds.
+- [Overview](https://docs.wandb.ai/models/track/log.md): Keep track of metrics, videos, custom plots, and more
+- [Customize log axes](https://docs.wandb.ai/models/track/log/customize-logging-axes.md): Use define_metric() to set a custom x-axis for logged metrics instead of the default W&B step counter.
+- [Log distributed training experiments](https://docs.wandb.ai/models/track/log/distributed-training.md): Use W&B to log distributed training experiments with multiple GPUs.
+- [Log models](https://docs.wandb.ai/models/track/log/log-models.md): Log model artifacts to a W&B run and retrieve them later using the log_model and use_model SDK methods.
+- [Log summary metrics](https://docs.wandb.ai/models/track/log/log-summary.md): Track and customize single summary metrics like best accuracy or minimum loss on a W&B run using run.summary.
+- [Log tables](https://docs.wandb.ai/models/track/log/log-tables.md): Create, populate, and log W&B Tables to visualize and query structured data from your experiment runs.
+- [Log media and objects](https://docs.wandb.ai/models/track/log/media.md): Log rich media, from 3D point clouds and molecules to HTML and histograms
+- [Create and track plots from experiments](https://docs.wandb.ai/models/track/log/plots.md): Create and track plots from machine learning experiments.
+- [Track CSV files with experiments](https://docs.wandb.ai/models/track/log/working-with-csv.md): Import CSV files into W&B as Tables and Artifacts for visualization, comparison, and analysis in dashboards.
+- [Projects](https://docs.wandb.ai/models/track/project-page.md): Compare versions of your model, explore results in a scratch workspace, and export findings to a report to save notes and visualizations
+- [Import and export data](https://docs.wandb.ai/models/track/public-api-guide.md): Import data from MLFlow, export or update data that you have saved to W&B
+- [Reproduce experiments](https://docs.wandb.ai/models/track/reproduce_experiments.md): Reproduce a teammate's W&B experiment by downloading the associated code, dependencies, and configuration from a run.
+- [View experiments results](https://docs.wandb.ai/models/track/workspaces.md): A playground for exploring run data with interactive visualizations
+- [Settings](https://docs.wandb.ai/platform/app/settings-page.md): Use the Weights and Biases Settings Page to customize your individual user profile or team settings.
+- [Manage billing settings](https://docs.wandb.ai/platform/app/settings-page/billing-settings.md): View plan details, monitor usage, and configure usage and spending alerts for your W&B organization's billing.
+- [Manage email settings](https://docs.wandb.ai/platform/app/settings-page/emails.md): Add, delete, and manage email addresses and login methods in your W&B profile settings page.
+- [Manage storage](https://docs.wandb.ai/platform/app/settings-page/storage.md): Manage W&B data storage consumption using reference artifacts, external buckets, and TTL deletion policies.
+- [Team settings](https://docs.wandb.ai/platform/app/settings-page/teams.md): Collaborate with your colleagues, share results, and track all the experiments across your team. Manage team settings including members, alerts, and privacy.
+- [Manage user settings](https://docs.wandb.ai/platform/app/settings-page/user-settings.md): Manage your profile information, account defaults, alerts, participation in beta products, GitHub integration, storage usage, account activation, and create teams in your user settings.
+- [Deployment options overview](https://docs.wandb.ai/platform/hosting.md): Compare W&B deployment options including Multi-tenant Cloud, Dedicated Cloud, and Self-Managed installations.
+- [Data encryption in Dedicated Cloud](https://docs.wandb.ai/platform/hosting/data-security/data-encryption.md): Learn how W&B encrypts data in Dedicated Cloud using cloud-native keys and the customer-managed encryption key policy.
+- [Configure IP allowlisting for Dedicated Cloud](https://docs.wandb.ai/platform/hosting/data-security/ip-allowlisting.md): Restrict access to a W&B Dedicated Cloud instance to authorized IP addresses using IP allowlisting.
+- [Access BYOB using pre-signed URLs](https://docs.wandb.ai/platform/hosting/data-security/presigned-urls.md): Understand how W&B uses pre-signed URLs for blob storage access, including team-level access control and audit logging.
+- [Configure private connectivity to Dedicated Cloud](https://docs.wandb.ai/platform/hosting/data-security/private-connectivity.md): Connect to a W&B Dedicated Cloud instance over a private network using AWS PrivateLink, GCP, or Azure Private Link.
+- [Bring your own bucket (BYOB)](https://docs.wandb.ai/platform/hosting/data-security/secure-storage-connector.md): Store W&B artifacts and data in your own cloud storage buckets using the Bring Your Own Bucket (BYOB) feature.
+- [Configure environment variables](https://docs.wandb.ai/platform/hosting/env-vars.md): Configure a self-managed W&B Server installation using environment variables for database, storage, Redis, and IAM settings.
+- [Dedicated Cloud](https://docs.wandb.ai/platform/hosting/hosting-options/dedicated-cloud.md): Learn about W&B Dedicated Cloud deployment features including compliance, data security, IAM, and maintenance policies.
+- [Export data from Dedicated Cloud](https://docs.wandb.ai/platform/hosting/hosting-options/dedicated-cloud/export-data.md): Export runs, metrics, artifacts, and reports from a W&B Dedicated Cloud instance using the Python SDK API.
+- [Rate limits](https://docs.wandb.ai/platform/hosting/hosting-options/dedicated-cloud/rate-limits.md): Default rate limits on Dedicated Cloud and how to request changes
+- [Supported Dedicated Cloud regions](https://docs.wandb.ai/platform/hosting/hosting-options/dedicated-cloud/regions.md): View all supported AWS, Google Cloud, and Azure regions available for W&B Dedicated Cloud instances.
+- [Multi-tenant Cloud](https://docs.wandb.ai/platform/hosting/hosting-options/multi_tenant_cloud.md): Learn about W&B Multi-tenant Cloud, a fully managed deployment on Google Cloud with built-in compliance and data security.
+- [W&B Self-Managed deployment overview](https://docs.wandb.ai/platform/hosting/hosting-options/self-managed.md): Deploy W&B Self-Managed on cloud or on-premises infrastructure
+- [Access management](https://docs.wandb.ai/platform/hosting/iam/access-management-intro.md): Manage users, teams, roles, and project visibility as an organization or team admin in W&B.
+- [Manage your organization](https://docs.wandb.ai/platform/hosting/iam/access-management/manage-organization.md): Manage users, teams, roles, seats, and billing within a W&B organization as an organization admin.
+- [Manage access control for projects](https://docs.wandb.ai/platform/hosting/iam/access-management/restricted-projects.md): Manage project access using visibility scopes and project-level roles
+- [Advanced IAM configuration](https://docs.wandb.ai/platform/hosting/iam/advanced_env_vars.md): Configure advanced IAM options for W&B with environment variables for SSO, session length, OIDC, and LDAP settings.
+- [Automate user and team management](https://docs.wandb.ai/platform/hosting/iam/automate_iam.md): Automate user and team management at scale in W&B using the SCIM API and the Python SDK API.
+- [Use federated identities with SDK](https://docs.wandb.ai/platform/hosting/iam/identity_federation.md): Use identity federation with JSON Web Tokens (JWTs) to authenticate with the W&B SDK and CLI without API keys.
+- [Configure SSO with LDAP](https://docs.wandb.ai/platform/hosting/iam/ldap.md): Configure LDAP-based SSO authentication for W&B Server including connection parameters and environment variables.
+- [Identity and access management (IAM)](https://docs.wandb.ai/platform/hosting/iam/org_team_struct.md): Understand the three IAM scopes in W&B (organizations, teams, and projects) and how they map to your company.
+- [Manage users, groups, and roles with SCIM](https://docs.wandb.ai/platform/hosting/iam/scim.md): Use the SCIM API to manage users, groups, and custom roles in a W&B organization with automated provisioning.
+- [Use service accounts to automate workflows](https://docs.wandb.ai/platform/hosting/iam/service-accounts.md): Manage automated or non-interactive workflows using org and team scoped service accounts
+- [Configure SSO with OIDC](https://docs.wandb.ai/platform/hosting/iam/sso.md): Configure SSO using OpenID Connect with identity providers like Okta, Azure AD, and AWS Cognito for W&B instances.
+- [Track user activity with audit logs](https://docs.wandb.ai/platform/hosting/monitoring-usage/audit-logging.md): Access, fetch, and analyze W&B audit logs across deployment types, including the log schema and tracked actions.
+- [W&B Mobile App (iOS)](https://docs.wandb.ai/platform/hosting/monitoring-usage/mobile-app.md): Track training runs, view line plots, and explore your W&B Models projects from your iPhone or iPad.
+- [View organization activity](https://docs.wandb.ai/platform/hosting/monitoring-usage/org_dashboard.md): View user status, activity, and usage trends in the W&B organization dashboard across deployment types.
+- [Configure Slack alerts](https://docs.wandb.ai/platform/hosting/monitoring-usage/slack-alerts.md): Create and configure a Slack application to receive W&B Server alerts, notifications, and monitoring updates.
+- [Disable automatic updates for W&B Server](https://docs.wandb.ai/platform/hosting/self-managed/disable-automatic-app-version-updates.md): Learn how to disable automatic updates for W&B Server.
+- [Deploy on Air-Gapped Kubernetes](https://docs.wandb.ai/platform/hosting/self-managed/on-premises-deployments/kubernetes-airgapped.md): Deploy W&B Platform in air-gapped and disconnected Kubernetes environments
+- [Deploy W&B with Kubernetes Operator](https://docs.wandb.ai/platform/hosting/self-managed/operator.md): Deploy W&B Platform with Kubernetes Operator on cloud or on-premises
+- [Rate limits](https://docs.wandb.ai/platform/hosting/self-managed/rate-limits.md): Optional rate limits on Self-Managed instances for stability
+- [Reference Architecture](https://docs.wandb.ai/platform/hosting/self-managed/ref-arch.md): Review the reference architecture for self-managed W&B deployments covering Kubernetes, MySQL, object storage, and networking.
+- [Self-Managed infrastructure requirements](https://docs.wandb.ai/platform/hosting/self-managed/requirements.md): Infrastructure and software requirements for W&B Self-Managed deployments
+- [Update W&B license and version](https://docs.wandb.ai/platform/hosting/server-upgrade-process.md): Guide for updating W&B version and license across different installation methods.
+- [Access the W&B MCP Server](https://docs.wandb.ai/platform/mcp-server.md): Connect your IDE or AI agent to the W&B Model Context Protocol (MCP) server to access your workspace data and documentation.
+- [Manage secrets](https://docs.wandb.ai/platform/secrets.md): Overview of W&B secrets, how they work, and how to get started using them.
+- [Use W&B Skills](https://docs.wandb.ai/platform/wb-skills.md): Install W&B Skills to teach your coding agent how to train models, build agents, and analyze experiments using W&B's AI development platform.
+- [W&B Pricing](https://docs.wandb.ai/pricing.md)
+- [Release Notes](https://docs.wandb.ai/release-notes.md): Browse release notes for W&B Server and SDK updates, including new features, fixes, and breaking changes.
+- [Release policies and processes](https://docs.wandb.ai/release-notes/release-policies.md): Understand the W&B Server release process including versioning, support windows, and upgrade policies.
+- [W&B SDK releases](https://docs.wandb.ai/release-notes/sdk-releases.md): View release notes for the W&B Python SDK including new features, bug fixes, and breaking changes by version.
+- [Supported W&B Server releases](https://docs.wandb.ai/release-notes/server-releases.md): View release notes for W&B Server including new features, improvements, bug fixes, and upgrade instructions.
+- [Archived W&B Server releases](https://docs.wandb.ai/release-notes/server-releases-archived.md): Browse archived release notes for older W&B Server versions that have reached end-of-life support status.
+- [W&B Platform Security](https://docs.wandb.ai/security.md)
+- [Support](https://docs.wandb.ai/support.md)
+- [W&B Training](https://docs.wandb.ai/training.md): Post-train your models using reinforcement learning and supervised fine-tuning
+- [API Overview](https://docs.wandb.ai/training/api-reference.md): Browse the W&B Training API endpoints for chat completions, models, training jobs, and health checks with authentication details.
+- [Prerequisites](https://docs.wandb.ai/training/prerequisites.md): Set up your environment for W&B Training by creating an account, generating an API key, and configuring a project.
+- [Serverless RL](https://docs.wandb.ai/training/serverless-rl.md): Learn about how to more efficiently post-train your models using reinforcement learning
+- [Available models](https://docs.wandb.ai/training/serverless-rl/available-models.md): Browse the foundation models available for training with Serverless RL, including supported model variants and capabilities.
+- [Usage information and limits](https://docs.wandb.ai/training/serverless-rl/usage-limits.md): Understand pricing, usage limits, and account restrictions for W&B Serverless RL
+- [Use your trained models](https://docs.wandb.ai/training/serverless-rl/use-trained-models.md): Make inference requests to the models you've trained
+- [Serverless SFT](https://docs.wandb.ai/training/sft-training.md): Learn how to fine-tune models using supervised fine-tuning (SFT) on W&B
+- [How to use Serverless SFT](https://docs.wandb.ai/training/sft-training/sft-training.md): Fine-tune models with Serverless SFT using OpenPipe's ART framework and the W&B Training API for supervised learning.
+- [W&B Weave](https://docs.wandb.ai/weave.md): Track, test, and improve language model apps with W&B Weave
+- [Community](https://docs.wandb.ai/weave/community.md): Connect with the Weights & Biases community and learn from experts
+- [What is Weave?](https://docs.wandb.ai/weave/concepts/what-is-weave.md): Learn about W&B Weave and how it helps you build, evaluate, and improve LLM applications
+- [Overview](https://docs.wandb.ai/weave/cookbooks.md): Practical guides and examples for building with Weights & Biases Weave
+- [Introduction to Evaluations](https://docs.wandb.ai/weave/cookbooks/Intro_to_Weave_Hello_Eval.md): Learn how to use introduction to evaluations with W&B Weave
+- [Introduction to Traces](https://docs.wandb.ai/weave/cookbooks/Intro_to_Weave_Hello_Trace.md): Learn how to use introduction to traces with W&B Weave
+- [Use Weave with W&B Models](https://docs.wandb.ai/weave/cookbooks/Models_and_Weave_Integration_Demo.md): Learn how to use Weave with W&B Models
+- [Audio With Weave](https://docs.wandb.ai/weave/cookbooks/audio_with_weave.md): Track and evaluate audio data in your LLM applications using W&B Weave's audio logging and tracing features.
+- [Chain Of Density](https://docs.wandb.ai/weave/cookbooks/chain_of_density.md): Implement chain-of-density summarization techniques with W&B Weave for iterative text compression and evaluation.
+- [Codegen](https://docs.wandb.ai/weave/cookbooks/codegen.md): Build and evaluate code generation pipelines with W&B Weave to trace prompts, outputs, and quality metrics.
+- [Custom Model Cost](https://docs.wandb.ai/weave/cookbooks/custom_model_cost.md): Define and track custom model costs in W&B Weave to monitor spending across different LLM providers and models.
+- [DSPy Prompt Optimization](https://docs.wandb.ai/weave/cookbooks/dspy_prompt_optimization.md): Learn how to use dspy prompt optimization with W&B Weave
+- [Feedback Prod](https://docs.wandb.ai/weave/cookbooks/feedback_prod.md): Collect and analyze user feedback on LLM outputs in production using W&B Weave's feedback tracking features.
+- [HuggingFace Dataset Evaluations](https://docs.wandb.ai/weave/cookbooks/hf_dataset_evals.md): Learn how to use huggingface dataset evaluations with W&B Weave
+- [Import From Csv](https://docs.wandb.ai/weave/cookbooks/import_from_csv.md): Import datasets from CSV files into W&B Weave for use in evaluations, tracing, and model comparison workflows.
+- [Leaderboard Quickstart](https://docs.wandb.ai/weave/cookbooks/leaderboard_quickstart.md): Learn how to use leaderboard quickstart with W&B Weave
+- [Multi Agent Structured Output](https://docs.wandb.ai/weave/cookbooks/multi-agent-structured-output.md): Learn how to use multi agent structured output with W&B Weave
+- [NotDiamond Custom Routing](https://docs.wandb.ai/weave/cookbooks/notdiamond_custom_routing.md): Learn how to use notdiamond custom routing with W&B Weave
+- [Trace and Evaluate a Computer Vision Pipeline with Weave](https://docs.wandb.ai/weave/cookbooks/ocr-pipeline.md): Learn how to use trace and evaluate a computer vision pipeline with weave with W&B Weave
+- [Online Monitoring](https://docs.wandb.ai/weave/cookbooks/online_monitoring.md): Set up online monitoring for LLM applications in production using W&B Weave to track performance and quality metrics.
+- [PII Data Handling](https://docs.wandb.ai/weave/cookbooks/pii.md): Handle personally identifiable information (PII) in LLM applications using W&B Weave's data redaction and filtering tools.
+- [Scorers As Guardrails](https://docs.wandb.ai/weave/cookbooks/scorers_as_guardrails.md): Learn how to use scorers as guardrails with W&B Weave
+- [Use the Weave Service API to trace](https://docs.wandb.ai/weave/cookbooks/weave_via_service_api.md): Learn how to use Weave tracing via service api with W&B Weave
+- [FAQs](https://docs.wandb.ai/weave/details/faqs.md): Find answers to common questions about Weave tracing, data handling, integrations, and troubleshooting.
+- [Limits and expected behaviors](https://docs.wandb.ai/weave/details/limits.md): A list of Weave's limitations, known issues, and expected behaviors
+- [Collect and track datasets](https://docs.wandb.ai/weave/guides/core-types/datasets.md): Organize, collect, track, and version examples for LLM application evaluation
+- [Configure Weave environment variables](https://docs.wandb.ai/weave/guides/core-types/env-vars.md): Configure Weave's behavior at runtime using environment variables
+- [Evaluations overview](https://docs.wandb.ai/weave/guides/core-types/evaluations.md): Evaluation-driven LLM application development to systematically improve applications
+- [Compare and rank models](https://docs.wandb.ai/weave/guides/core-types/leaderboards.md): Compare and rank different model versions based on evaluation metrics
+- [Log media](https://docs.wandb.ai/weave/guides/core-types/media.md): Log media returned in your traces, such as images and videos.
+- [Track application versions with models](https://docs.wandb.ai/weave/guides/core-types/models.md): Track versions of your application with structured models that combine data and code.
+- [Creating prompt objects](https://docs.wandb.ai/weave/guides/core-types/prompts.md): Create, publish, and use prompt objects for LLM applications
+- [Store and track versions of prompts](https://docs.wandb.ai/weave/guides/core-types/prompts-version.md): Retrieve and manage versions of your prompts for LLM applications
+- [Use builtin scorers](https://docs.wandb.ai/weave/guides/evaluation/builtin_scorers.md): Use Weave's predefined scorers for evaluating your AI applications
+- [Create dynamic Leaderboards in Evaluations](https://docs.wandb.ai/weave/guides/evaluation/dynamic_leaderboards.md): Dynamic Leaderboards let you configure, customize, save, and update Leaderboard views directly from an evaluation.
+- [Log evaluation data from your code](https://docs.wandb.ai/weave/guides/evaluation/evaluation_logger.md): Flexible, incremental way to log evaluation data from Python and TypeScript code
+- [Set up guardrails](https://docs.wandb.ai/weave/guides/evaluation/guardrails.md): Ensure LLM safety and measure output quality in production applications
+- [Set up monitors](https://docs.wandb.ai/weave/guides/evaluation/monitors.md): Passively score production traffic to surface trends and issues
+- [Scoring Overview](https://docs.wandb.ai/weave/guides/evaluation/scorers.md): Evaluate AI outputs and return evaluation metrics with Weave Scorers
+- [Evaluate using local scorers](https://docs.wandb.ai/weave/guides/evaluation/weave_local_scorers.md): Small language models that run locally to evaluate AI system safety and quality
+- [Integrations overview](https://docs.wandb.ai/weave/guides/integrations.md): Trace and monitor LLM calls across 30+ providers and frameworks with Weave's automatic patching for OpenAI, Anthropic, and more.
+- [Agno](https://docs.wandb.ai/weave/guides/integrations/agno.md): Trace Agno multi-agent systems with Weave using OpenTelemetry to capture agent interactions, tool calls, and multi-modal workflows.
+- [Anthropic](https://docs.wandb.ai/weave/guides/integrations/anthropic.md): Use Weave to automatically track and log LLM calls made via the Anthropic SDK
+- [AutoGen](https://docs.wandb.ai/weave/guides/integrations/autogen.md): Use Weave to track and monitor AutoGen agents and multi-agent systems
+- [Control automatic LLM call tracking](https://docs.wandb.ai/weave/guides/integrations/autopatching.md): Control how W&B Weave automatically records calls to OpenAI, Anthropic, and other LLM libraries
+- [Microsoft Azure](https://docs.wandb.ai/weave/guides/integrations/azure.md): Integrate Weave with Microsoft Azure OpenAI services
+- [Bedrock](https://docs.wandb.ai/weave/guides/integrations/bedrock.md): Track and monitor Amazon Bedrock LLM calls with Weave, capturing foundation model interactions and converse API usage.
+- [Cerebras](https://docs.wandb.ai/weave/guides/integrations/cerebras.md): Use Weave to trace and log LLM calls made via the Cerebras Cloud SDK
+- [Claude Agent SDK](https://docs.wandb.ai/weave/guides/integrations/claude_agent.md): Use W&B Weave with the Claude Agent SDK to trace your agent's queries, tool calls, and multi-turn conversations.
+- [Cohere](https://docs.wandb.ai/weave/guides/integrations/cohere.md): Use Weave to automatically track and log LLM calls made via the Cohere Python library
+- [CrewAI](https://docs.wandb.ai/weave/guides/integrations/crewai.md): Integrate CrewAI with Weave for monitoring and tracing multi-agent applications
+- [DSPy](https://docs.wandb.ai/weave/guides/integrations/dspy.md): Use Weave to automatically track and log calls made using DSPy modules and functions
+- [Google](https://docs.wandb.ai/weave/guides/integrations/google.md): Use Weave to trace and log Google GenAI model calls
+- [Google Agent Development Kit (ADK)](https://docs.wandb.ai/weave/guides/integrations/google_adk.md): Trace Google Agent Development Kit (ADK) agent and tool calls in Weave using OpenTelemetry
+- [Groq](https://docs.wandb.ai/weave/guides/integrations/groq.md): Track and monitor Groq LPU inference with Weave, capturing model calls, performance metrics, and function chains for LLM applications.
+- [Hugging Face Hub](https://docs.wandb.ai/weave/guides/integrations/huggingface.md): Integrate Hugging Face Hub with W&B Weave to track and analyze your machine learning applications
+- [Instructor](https://docs.wandb.ai/weave/guides/integrations/instructor.md): Trace structured data extraction from LLMs with Weave's Instructor integration, capturing Pydantic validation and retry logic.
+- [TypeScript SDK: Third-Party Integration Guide](https://docs.wandb.ai/weave/guides/integrations/js.md): Integrate third-party libraries with the Weave TypeScript SDK
+- [Koog](https://docs.wandb.ai/weave/guides/integrations/koog.md): Trace Kotlin-based Koog agents with Weave using OpenTelemetry to capture tool calls, prompts, and completions for AI applications.
+- [LangChain](https://docs.wandb.ai/weave/guides/integrations/langchain.md): Use Weave to track and log all calls made through the LangChain Python library
+- [LiteLLM](https://docs.wandb.ai/weave/guides/integrations/litellm.md): Automatically track and log LLM calls made via LiteLLM
+- [LlamaIndex](https://docs.wandb.ai/weave/guides/integrations/llamaindex.md): Trace and debug LlamaIndex applications with Weave, capturing LLM calls, RAG pipelines, agent steps, and evaluations automatically.
+- [Local Models](https://docs.wandb.ai/weave/guides/integrations/local_models.md): Run open-source models locally with Ollama, LMStudio, or GPT4All and trace them with Weave using OpenAI SDK compatibility.
+- [Model Context Protocol (MCP) and Weave](https://docs.wandb.ai/weave/guides/integrations/mcp.md): Trace activity between your MCP client and MCP server with Weave
+- [MistralAI](https://docs.wandb.ai/weave/guides/integrations/mistral.md): Track and monitor MistralAI model calls with Weave's automatic tracing for chat completions, function calling, and model interactions.
+- [NVIDIA NIM](https://docs.wandb.ai/weave/guides/integrations/nvidia_nim.md): Use Weave to trace and log LLM calls made via the ChatNVIDIA library
+- [OpenAI](https://docs.wandb.ai/weave/guides/integrations/openai.md): Integrate OpenAI with Weave for tracing, evaluation, and monitoring
+- [OpenAI Realtime API](https://docs.wandb.ai/weave/guides/integrations/openai-realtime-audio.md): Use Weave to automatically trace your calls to the OpenAI Realtime API.
+- [OpenAI Agents SDK](https://docs.wandb.ai/weave/guides/integrations/openai_agents.md): Use W&B Weave with the OpenAI Agents SDK to track and monitor your agentic applications
+- [OpenRouter](https://docs.wandb.ai/weave/guides/integrations/openrouter.md): Use OpenRouter's unified interface for many LLMs with automatic Weave integration
+- [PydanticAI](https://docs.wandb.ai/weave/guides/integrations/pydantic_ai.md): Trace PydanticAI agent and tool calls in Weave using OpenTelemetry
+- [Smolagents](https://docs.wandb.ai/weave/guides/integrations/smolagents.md): Track Smolagents applications with Weave's automatic tracing, capturing tool calls, model inferences, and multi-step agent workflows.
+- [Together AI](https://docs.wandb.ai/weave/guides/integrations/together_ai.md): Track Together AI's open-source LLMs with Weave using OpenAI SDK compatibility for seamless tracing and evaluation of model calls.
+- [Verdict](https://docs.wandb.ai/weave/guides/integrations/verdict.md): Use Verdict evaluation framework with Weave to trace and monitor your LLM evaluation pipelines
+- [Verifiers](https://docs.wandb.ai/weave/guides/integrations/verifiers.md): Track Verifiers RL environments and LLM agent training with Weave, capturing multi-round conversations and evaluation rollouts.
+- [Deployment options and security features](https://docs.wandb.ai/weave/guides/platform.md): Learn about Weave's deployment options, IAM management, and data security features.
+- [Manage Weave Projects](https://docs.wandb.ai/weave/guides/platform/weave-projects.md): Use Weave projects to organize related assets like traces, prompts, evaluations, models, and dashboards.
+- [Set up a self-managed W&B Weave instance](https://docs.wandb.ai/weave/guides/platform/weave-self-managed.md): Deploy and manage Weave on your own infrastructure
+- [Define and log attributes](https://docs.wandb.ai/weave/guides/tools/attributes.md): Use attributes to add meta data to your traces and evaluations.
+- [Map columns in datasets](https://docs.wandb.ai/weave/guides/tools/column-mapping.md): Map columns in datasets to different names. This helps you align the column names in your dataset with the column names expected by the scorer.
+- [Compare traces and other logged information](https://docs.wandb.ai/weave/guides/tools/comparison.md): Visually compare and diff code, traces, prompts, models, and configurations
+- [Compare model performance using the Evaluation Playground](https://docs.wandb.ai/weave/guides/tools/evaluation_playground.md): Compare and evaluate model performance without code using Weave's Evaluation Playground with custom datasets and LLM judges.
+- [Use the Playground to experiment with prompts](https://docs.wandb.ai/weave/guides/tools/playground.md): Simplify the process of iterating on LLM prompts and responses
+- [Create and manage saved views](https://docs.wandb.ai/weave/guides/tools/saved-views.md): Customize how you interact with traced function calls and evaluations
+- [Use Weave with W&B training runs](https://docs.wandb.ai/weave/guides/tools/weave-in-workspaces.md): Integrate Weave traces with W&B training runs to view function execution details alongside ML metrics in workspace dashboards.
+- [Set up annotation queues](https://docs.wandb.ai/weave/guides/tracking/annotation-queues.md): Create annotation queues, route traces to domain experts, and export structured feedback.
+- [Review items in an annotation queue](https://docs.wandb.ai/weave/guides/tracking/annotation-review.md): Evaluate trace items and submit structured feedback using a simplified review interface.
+- [Call schema reference](https://docs.wandb.ai/weave/guides/tracking/call-schema-reference.md): Reference for the Call object structure and properties
+- [Track custom costs](https://docs.wandb.ai/weave/guides/tracking/costs.md): Track and manage costs for LLM operations in Weave
+- [Trace your code](https://docs.wandb.ai/weave/guides/tracking/create-call.md): Instrument your running code so its execution appears as detailed traces in W&B Weave.
+- [Collect feedback and use annotations](https://docs.wandb.ai/weave/guides/tracking/feedback.md): Collect and analyze feedback for LLM applications through UI and SDK
+- [Get a handle to the Call object during execution](https://docs.wandb.ai/weave/guides/tracking/get-call-object.md): Access the W&B Weave Call object at runtime for feedback, display names, and other metadata
+- [Track and version objects](https://docs.wandb.ai/weave/guides/tracking/objects.md): Track and version any JSON-serializable object in W&B Weave
+- [Customize Ops](https://docs.wandb.ai/weave/guides/tracking/ops.md): Learn how to color your Ops for better visibility, how to modify what's logged, and how to control the sampling rate
+- [Send OpenTelemetry Traces to Weave](https://docs.wandb.ai/weave/guides/tracking/otel.md): Ingest OpenTelemetry compatible trace data through a dedicated endpoint
+- [Query and export Calls](https://docs.wandb.ai/weave/guides/tracking/querying-calls.md): Filter, sort, and export Weave call data using the Python SDK, REST API, or the Weave UI for custom analysis.
+- [Redact PII from traces](https://docs.wandb.ai/weave/guides/tracking/redact-pii.md): Automatically redact Personally Identifiable Information from traces
+- [Set Call display name](https://docs.wandb.ai/weave/guides/tracking/set-call-display.md): Set or override the display name for a Call in W&B Weave tracing
+- [Trace threads](https://docs.wandb.ai/weave/guides/tracking/threads.md): Trace and analyze multi-turn conversations in your LLM applications using threads.
+- [Disable tracing](https://docs.wandb.ai/weave/guides/tracking/trace-disable.md): Learn options to disable or conditionally turn off W&B Weave tracing
+- [Trace generator functions](https://docs.wandb.ai/weave/guides/tracking/trace-generator-func.md): Track sync and async generator functions with W&B Weave tracing
+- [Use trace plots](https://docs.wandb.ai/weave/guides/tracking/trace-plots.md): Visualize trace-level metrics with interactive charts in Weave to explore latency, cost, and token usage patterns for LLM applications.
+- [Link a W&B run to trace function calls](https://docs.wandb.ai/weave/guides/tracking/trace-to-run.md): Associate Weave traces with W&B runs for experiment tracking
+- [Navigate the Weave Trace view](https://docs.wandb.ai/weave/guides/tracking/trace-tree.md): Use Weave's Trace view to make sense of complex execution paths in your LLM and agentic apps.
+- [Understand Ops and Calls](https://docs.wandb.ai/weave/guides/tracking/tracing.md): Learn how Ops and Calls create the foundation of W&B Weave's tracing system.
+- [Update and delete Calls](https://docs.wandb.ai/weave/guides/tracking/update-call.md): Modify display names, add feedback, and delete Calls in W&B Weave
+- [View and customize trace display](https://docs.wandb.ai/weave/guides/tracking/view-call.md): View calls in the UI and customize how trace data is displayed
+- [Open Source](https://docs.wandb.ai/weave/open-source.md): Explore Weave's open source resources and contribute to the project
+- [Quickstart: Track LLM inputs & outputs](https://docs.wandb.ai/weave/quickstart.md): Get started with W&B Weave by adding tracing to your LLM application to debug and monitor model interactions.
+- [Learn Weave with W&B Inference](https://docs.wandb.ai/weave/quickstart-inference.md): Learn Weave fundamentals using W&B Inference to trace model calls, compare outputs, and run evaluations.
+- [Overview](https://docs.wandb.ai/weave/reference.md): Comprehensive API documentation and SDK references for Weights & Biases Weave
+- [weave](https://docs.wandb.ai/weave/reference/python-sdk.md): Browse the complete Python SDK reference documentation for W&B Weave, including all modules and classes.
+- [feedback](https://docs.wandb.ai/weave/reference/python-sdk/trace/feedback.md): Python SDK reference for weave.trace.feedback
+- [op](https://docs.wandb.ai/weave/reference/python-sdk/trace/op.md): Python SDK reference for weave.trace.op
+- [util](https://docs.wandb.ai/weave/reference/python-sdk/trace/util.md): Python SDK reference for weave.trace.util
+- [weave_client](https://docs.wandb.ai/weave/reference/python-sdk/trace/weave_client.md): Python SDK reference for weave.trace.weave_client
+- [trace_server_interface](https://docs.wandb.ai/weave/reference/python-sdk/trace_server/trace_server_interface.md): Python SDK reference for weave.trace_server.trace_server_interface
+- [remote_http_trace_server](https://docs.wandb.ai/weave/reference/python-sdk/trace_server_bindings/remote_http_trace_server.md): Python SDK reference for weave.trace_server_bindings.remote_http_trace_server
+- [Service API overview](https://docs.wandb.ai/weave/reference/service-api.md): Use the Weave Service API, which provides REST endpoints for programmatic access to Weave functionality.
+- [Annotation Queue Add Calls](https://docs.wandb.ai/weave/reference/service-api/annotation-queues/annotation-queue-add-calls.md): Add calls to an annotation queue.
+- [Annotation Queue Create](https://docs.wandb.ai/weave/reference/service-api/annotation-queues/annotation-queue-create.md): Create a new annotation queue.
+- [Annotation Queue Item Progress Update](https://docs.wandb.ai/weave/reference/service-api/annotation-queues/annotation-queue-item-progress-update.md): Update the annotation state of a queue item for the current annotator.
+- [Annotation Queue Items Query](https://docs.wandb.ai/weave/reference/service-api/annotation-queues/annotation-queue-items-query.md): Query items in an annotation queue with pagination and sorting.
+- [Annotation Queue Read](https://docs.wandb.ai/weave/reference/service-api/annotation-queues/annotation-queue-read.md): Read a specific annotation queue.
+- [Annotation Queues Query Stream](https://docs.wandb.ai/weave/reference/service-api/annotation-queues/annotation-queues-query-stream.md): Query annotation queues for a project (streaming NDJSON response).
+- [Annotation Queues Stats](https://docs.wandb.ai/weave/reference/service-api/annotation-queues/annotation-queues-stats.md): Get stats for multiple annotation queues.
+- [Call End](https://docs.wandb.ai/weave/reference/service-api/calls/call-end.md)
+- [Call Read](https://docs.wandb.ai/weave/reference/service-api/calls/call-read.md)
+- [Call Start](https://docs.wandb.ai/weave/reference/service-api/calls/call-start.md)
+- [Call Start Batch](https://docs.wandb.ai/weave/reference/service-api/calls/call-start-batch.md)
+- [Call Stats](https://docs.wandb.ai/weave/reference/service-api/calls/call-stats.md)
+- [Call Update](https://docs.wandb.ai/weave/reference/service-api/calls/call-update.md)
+- [Calls Delete](https://docs.wandb.ai/weave/reference/service-api/calls/calls-delete.md)
+- [Calls Query Stats](https://docs.wandb.ai/weave/reference/service-api/calls/calls-query-stats.md)
+- [Calls Query Stream](https://docs.wandb.ai/weave/reference/service-api/calls/calls-query-stream.md)
+- [Calls Usage](https://docs.wandb.ai/weave/reference/service-api/calls/calls-usage.md): Compute aggregated usage for multiple root calls, with descendant rollup.
+- [Trace Usage](https://docs.wandb.ai/weave/reference/service-api/calls/trace-usage.md): Compute per-call usage for a trace, with descendant rollup.
+- [Cost Create](https://docs.wandb.ai/weave/reference/service-api/costs/cost-create.md)
+- [Cost Purge](https://docs.wandb.ai/weave/reference/service-api/costs/cost-purge.md)
+- [Cost Query](https://docs.wandb.ai/weave/reference/service-api/costs/cost-query.md)
+- [Dataset Create](https://docs.wandb.ai/weave/reference/service-api/datasets/dataset-create.md): Create a dataset object.
+- [Dataset Delete](https://docs.wandb.ai/weave/reference/service-api/datasets/dataset-delete.md): Delete a dataset object. If digests are provided, only those versions are deleted. Otherwise, all versions are deleted.
+- [Dataset List](https://docs.wandb.ai/weave/reference/service-api/datasets/dataset-list.md): List dataset objects.
+- [Dataset Read](https://docs.wandb.ai/weave/reference/service-api/datasets/dataset-read.md): Get a dataset object.
+- [Evaluation Run Create](https://docs.wandb.ai/weave/reference/service-api/evaluation-runs/evaluation-run-create.md): Create an evaluation run.
+- [Evaluation Run Delete](https://docs.wandb.ai/weave/reference/service-api/evaluation-runs/evaluation-run-delete.md): Delete evaluation runs.
+- [Evaluation Run Finish](https://docs.wandb.ai/weave/reference/service-api/evaluation-runs/evaluation-run-finish.md): Finish an evaluation run.
+- [Evaluation Run List](https://docs.wandb.ai/weave/reference/service-api/evaluation-runs/evaluation-run-list.md): List evaluation runs.
+- [Evaluation Run Read](https://docs.wandb.ai/weave/reference/service-api/evaluation-runs/evaluation-run-read.md): Read an evaluation run.
+- [Evaluate Model](https://docs.wandb.ai/weave/reference/service-api/evaluations/evaluate-model.md)
+- [Evaluation Create](https://docs.wandb.ai/weave/reference/service-api/evaluations/evaluation-create.md): Create an evaluation object.
+- [Evaluation Delete](https://docs.wandb.ai/weave/reference/service-api/evaluations/evaluation-delete.md): Delete an evaluation object.
+- [Evaluation List](https://docs.wandb.ai/weave/reference/service-api/evaluations/evaluation-list.md): List evaluation objects.
+- [Evaluation Read](https://docs.wandb.ai/weave/reference/service-api/evaluations/evaluation-read.md): Get an evaluation object.
+- [Evaluation Status](https://docs.wandb.ai/weave/reference/service-api/evaluations/evaluation-status.md)
+- [Feedback Create](https://docs.wandb.ai/weave/reference/service-api/feedback/feedback-create.md): Add feedback to a call or object.
+- [Feedback Create Batch](https://docs.wandb.ai/weave/reference/service-api/feedback/feedback-create-batch.md): Add multiple feedback items to calls or objects.
+- [Feedback Purge](https://docs.wandb.ai/weave/reference/service-api/feedback/feedback-purge.md): Permanently delete feedback.
+- [Feedback Query](https://docs.wandb.ai/weave/reference/service-api/feedback/feedback-query.md): Query for feedback.
+- [Feedback Replace](https://docs.wandb.ai/weave/reference/service-api/feedback/feedback-replace.md)
+- [File Content](https://docs.wandb.ai/weave/reference/service-api/files/file-content.md)
+- [File Create](https://docs.wandb.ai/weave/reference/service-api/files/file-create.md)
+- [Files Stats](https://docs.wandb.ai/weave/reference/service-api/files/files-stats.md)
+- [Image Create](https://docs.wandb.ai/weave/reference/service-api/images/image-create.md)
+- [Inference Get](https://docs.wandb.ai/weave/reference/service-api/inference/inference-get.md): OpenAI-compatible APIs.
+- [Inference Post](https://docs.wandb.ai/weave/reference/service-api/inference/inference-post.md): OpenAI-compatible APIs.
+- [Inference Router Openrouter Models](https://docs.wandb.ai/weave/reference/service-api/inference/inference-router-openrouter-models.md): Returns a list of models that are available to be used with OpenRouter.
+- [Model Create](https://docs.wandb.ai/weave/reference/service-api/models/model-create.md): Create a model object.
+- [Model Delete](https://docs.wandb.ai/weave/reference/service-api/models/model-delete.md): Delete a model object. If digests are provided, only those versions are deleted. Otherwise, all versions are deleted.
+- [Model List](https://docs.wandb.ai/weave/reference/service-api/models/model-list.md): List model objects.
+- [Model Read](https://docs.wandb.ai/weave/reference/service-api/models/model-read.md): Get a model object.
+- [Obj Create](https://docs.wandb.ai/weave/reference/service-api/objects/obj-create.md)
+- [Obj Delete](https://docs.wandb.ai/weave/reference/service-api/objects/obj-delete.md)
+- [Obj Read](https://docs.wandb.ai/weave/reference/service-api/objects/obj-read.md)
+- [Objs Query](https://docs.wandb.ai/weave/reference/service-api/objects/objs-query.md)
+- [Export Trace](https://docs.wandb.ai/weave/reference/service-api/opentelemetry/export-trace.md)
+- [Op Create](https://docs.wandb.ai/weave/reference/service-api/ops/op-create.md): Create an op object.
+- [Op Delete](https://docs.wandb.ai/weave/reference/service-api/ops/op-delete.md): Delete an op object. If digests are provided, only those versions are deleted. Otherwise, all versions are deleted.
+- [Op List](https://docs.wandb.ai/weave/reference/service-api/ops/op-list.md): List op objects.
+- [Op Read](https://docs.wandb.ai/weave/reference/service-api/ops/op-read.md): Get an op object.
+- [Prediction Create](https://docs.wandb.ai/weave/reference/service-api/predictions/prediction-create.md): Create a prediction.
+- [Prediction Delete](https://docs.wandb.ai/weave/reference/service-api/predictions/prediction-delete.md): Delete predictions.
+- [Prediction Finish](https://docs.wandb.ai/weave/reference/service-api/predictions/prediction-finish.md): Finish a prediction.
+- [Prediction List](https://docs.wandb.ai/weave/reference/service-api/predictions/prediction-list.md): List predictions.
+- [Prediction Read](https://docs.wandb.ai/weave/reference/service-api/predictions/prediction-read.md): Read a prediction.
+- [Refs Read Batch](https://docs.wandb.ai/weave/reference/service-api/refs/refs-read-batch.md)
+- [Scorer Create](https://docs.wandb.ai/weave/reference/service-api/scorers/scorer-create.md): Create a scorer object.
+- [Scorer Delete](https://docs.wandb.ai/weave/reference/service-api/scorers/scorer-delete.md): Delete a scorer object.
+- [Scorer List](https://docs.wandb.ai/weave/reference/service-api/scorers/scorer-list.md): List scorer objects.
+- [Scorer Read](https://docs.wandb.ai/weave/reference/service-api/scorers/scorer-read.md): Get a scorer object.
+- [Score Create](https://docs.wandb.ai/weave/reference/service-api/scores/score-create.md): Create a score.
+- [Score Delete](https://docs.wandb.ai/weave/reference/service-api/scores/score-delete.md): Delete scores.
+- [Score List](https://docs.wandb.ai/weave/reference/service-api/scores/score-list.md): List scores.
+- [Score Read](https://docs.wandb.ai/weave/reference/service-api/scores/score-read.md): Read a score.
+- [Get Caller Location](https://docs.wandb.ai/weave/reference/service-api/service/get-caller-location.md): Lookup the geographic location of a user based on their IP address.
+- [Read Root](https://docs.wandb.ai/weave/reference/service-api/service/read-root.md)
+- [Read Version](https://docs.wandb.ai/weave/reference/service-api/service/read-version.md)
+- [Server Info](https://docs.wandb.ai/weave/reference/service-api/service/server-info.md)
+- [Table Create](https://docs.wandb.ai/weave/reference/service-api/tables/table-create.md)
+- [Table Create From Digests](https://docs.wandb.ai/weave/reference/service-api/tables/table-create-from-digests.md)
+- [Table Query](https://docs.wandb.ai/weave/reference/service-api/tables/table-query.md)
+- [Table Query Stats](https://docs.wandb.ai/weave/reference/service-api/tables/table-query-stats.md)
+- [Table Query Stats Batch](https://docs.wandb.ai/weave/reference/service-api/tables/table-query-stats-batch.md)
+- [Table Update](https://docs.wandb.ai/weave/reference/service-api/tables/table-update.md)
+- [Threads Query Stream](https://docs.wandb.ai/weave/reference/service-api/threads/threads-query-stream.md)
+- [weave](https://docs.wandb.ai/weave/reference/typescript-sdk.md): Browse the complete TypeScript SDK reference documentation for W&B Weave, including all classes and functions.
+- [Class: Dataset<R>](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/dataset.md): TypeScript SDK reference
+- [Class: Evaluation<R, E, M>](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/evaluation.md): TypeScript SDK reference
+- [Class: EvaluationLogger](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/evaluationlogger.md): TypeScript SDK reference
+- [Class: MessagesPrompt](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/messagesprompt.md): TypeScript SDK reference
+- [Class: ObjectRef](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/objectref.md): TypeScript SDK reference
+- [Class: ScoreLogger](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/scorelogger.md): TypeScript SDK reference
+- [Class: StringPrompt](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/stringprompt.md): TypeScript SDK reference
+- [Class: WeaveClient](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/weaveclient.md): TypeScript SDK reference
+- [Class: WeaveObject](https://docs.wandb.ai/weave/reference/typescript-sdk/classes/weaveobject.md): TypeScript SDK reference
+- [init](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/init.md): TypeScript SDK reference
+- [login](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/login.md): TypeScript SDK reference
+- [op](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/op.md): TypeScript SDK reference
+- [requireCurrentCallStackEntry](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/requirecurrentcallstackentry.md): TypeScript SDK reference
+- [requireCurrentChildSummary](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/requirecurrentchildsummary.md): TypeScript SDK reference
+- [weaveAudio](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/weaveaudio.md): TypeScript SDK reference
+- [weaveImage](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/weaveimage.md): TypeScript SDK reference
+- [withAttributes](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/withattributes.md): TypeScript SDK reference
+- [wrapOpenAI](https://docs.wandb.ai/weave/reference/typescript-sdk/functions/wrapopenai.md): TypeScript SDK reference
+- [Interface: CallSchema](https://docs.wandb.ai/weave/reference/typescript-sdk/interfaces/callschema.md): TypeScript SDK reference
+- [Interface: CallsFilter](https://docs.wandb.ai/weave/reference/typescript-sdk/interfaces/callsfilter.md): TypeScript SDK reference
+- [Interface: WeaveAudio](https://docs.wandb.ai/weave/reference/typescript-sdk/interfaces/weaveaudio.md): TypeScript SDK reference
+- [Interface: WeaveImage](https://docs.wandb.ai/weave/reference/typescript-sdk/interfaces/weaveimage.md): TypeScript SDK reference
+- [Op](https://docs.wandb.ai/weave/reference/typescript-sdk/type-aliases/op.md): TypeScript SDK reference
+- [OpDecorator](https://docs.wandb.ai/weave/reference/typescript-sdk/type-aliases/opdecorator.md): TypeScript SDK reference
+- [Build an evaluation](https://docs.wandb.ai/weave/tutorial-eval.md): Learn how to build an evaluation pipeline with Weave Models and Evaluations
+- [Evaluate RAG applications](https://docs.wandb.ai/weave/tutorial-rag.md): Build and evaluate RAG applications using Weave with LLM judges
+- [Trace nested functions](https://docs.wandb.ai/weave/tutorial-tracing_2.md): Learn how to track deeply nested Call structures with W&B tracing
+- [Tutorial: App versioning](https://docs.wandb.ai/weave/tutorial-weave_models.md): Learn how to use Weave Model to track and version your application and its parameters
+
+## OpenAPI Specs
+
+- [openapi](https://docs.wandb.ai/training/api-reference/openapi.json)
