@@ -1,6 +1,6 @@
 ---
-name: wandb-primary
-description: The definitive skill for working with Weights & Biases (W&B / wandb). Use this skill whenever the user mentions W&B, wandb, Weights and Biases, Weave, training runs, experiment tracking, loss curves, metrics, hyperparameters, sweeps, artifacts, model registry, evaluation, traces, LLM observability, GenAI monitoring, scorers, or any W&B data — even if they don't say "W&B" explicitly. Covers everything across both products. W&B SDK (wandb Python package) for model training — logging runs, querying run history, comparing experiments, analyzing loss/accuracy/metrics, sweep analysis, artifact management, system metrics (GPU/CPU), and report authoring. Weave SDK for GenAI/LLM applications — tracing calls, evaluating models, scoring outputs, token usage, cost estimation, and failure analysis. Includes bundled helper libraries (wandb_helpers.py, weave_helpers.py) with optimized functions like fetch_runs (25x faster than raw SDK on large projects via GraphQL field selection), probe_project (auto-discovers project scale and available metrics), scan_history (smart parquet-backed history reading), diagnose_run (configurable training diagnostics), and eval_results_to_dicts (structured evaluation extraction). Handles projects of any size — from 10 runs to 100K+ runs with thousands of metrics per run. Begins with a brief interactive interview to configure the skill for the user's specific environment, metrics, and analysis goals before any work begins.
+name: wandb-primary-interview
+description: Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (training runs, metrics, artifacts, sweeps, reports) and the Weave SDK (GenAI traces, evaluations, scorers). Includes an interactive interview that configures the skill for the user's specific environment, metrics, and preferences before any work begins.
 ---
 <!--
 SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
@@ -17,13 +17,13 @@ SPDX-PackageName: skills
 <!-- CONFIGURATION_START -->
 | Key | Value |
 |-----|-------|
-| interview_completed | true |
-| python_run | uv run python |
-| python_install | uv add |
-| llm_provider | openai |
-| llm_model | gpt-5.4-mini |
-| llm_reasoning | high |
-| llm_endpoint | responses |
+| interview_completed | false |
+| python_run | _not set_ |
+| python_install | _not set_ |
+| llm_provider | _not set_ |
+| llm_model | _not set_ |
+| llm_reasoning | _not set_ |
+| llm_endpoint | _not set_ |
 <!-- CONFIGURATION_END -->
 
 ---
@@ -68,7 +68,7 @@ This skill covers everything an agent needs to work with Weights & Biases:
 
 ```python
 import sys
-sys.path.insert(0, "skills/wandb-primary/scripts")
+sys.path.insert(0, "skills/wandb-primary-interview/scripts")
 
 # Weave helpers (traces, evals, GenAI)
 from weave_helpers import (
