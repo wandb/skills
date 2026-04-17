@@ -1,6 +1,6 @@
 ---
 name: wandb-primary
-description: Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (training runs, metrics, artifacts, sweeps, reports) and the Weave SDK (GenAI traces, evaluations, scorers). Includes helper libraries, gotcha tables, and data analysis patterns. Use this skill whenever the user asks about W&B runs, Weave traces, evaluations, training metrics, loss curves, model comparisons, or any Weights & Biases data — even if they don't say "W&B" explicitly.
+description: Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (training runs, metrics, artifacts, sweeps, reports) and the Weave SDK (GenAI traces, evaluations, scorers). Includes helper libraries, gotcha tables, and data analysis patterns. Optimized for projects of any size — uses GraphQL field selection, beta_scan_history (parquet), server-side filters, and timeout tuning for reliable performance on large projects (10K+ runs, 1K+ metrics per run).
 ---
 <!--
 SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
@@ -9,6 +9,20 @@ SPDX-PackageName: skills
 -->
 
 # W&B Primary Skill
+
+## CRITICAL: Large project performance rules
+
+These rules prevent 502 errors, timeouts, and multi-minute hangs on projects with 10K+ runs or runs with 1K+ metrics. **Violating any of these will cause failures on large projects.**
+
+1. **Always use `wandb.Api(timeout=60)`** — the default 19s timeout causes constant failures
+2. **NEVER call `history()` or `scan_history()` without explicit `keys=[...]`** — runs with 1K+ metrics will 502 or timeout when fetching all columns
+3. **Use `per_page=min(limit, 1000)`** when calling `api.runs()` — reduces pagination round-trips
+4. **Prefer server-side filters** (`summary_metrics.X: {$gt: Y}`) over client-side iteration
+5. **Avoid `len(runs)`** on large projects — it triggers an expensive count query (5s+). Use `runs[:N]` directly
+6. **Use `beta_scan_history`** for runs with 10K+ history steps — reads from parquet, not GraphQL
+7. **Never iterate all config keys** unless explicitly needed — use `config_keys=["lr", "model"]`
+
+---
 
 ## Python environment detection (DO THIS FIRST)
 
@@ -88,11 +102,15 @@ from weave_helpers import (
     eval_efficiency,         # Compute tokens-per-success across eval calls
 )
 
-# W&B helpers (training runs, metrics)
+# W&B helpers (training runs, metrics) — large-project optimized
 from wandb_helpers import (
-    runs_to_dataframe,       # Convert runs to a clean pandas DataFrame
-    diagnose_run,            # Quick diagnostic summary of a training run
-    compare_configs,         # Side-by-side config diff between two runs
+    get_api,             # Create API with safe timeout (default 60s)
+    probe_project,       # Discover project scale, metrics, config BEFORE querying
+    fetch_runs,          # FAST: Direct GraphQL with selective metrics (17x faster)
+    runs_to_dataframe,   # Legacy: iterate run objects (slower, use fetch_runs instead)
+    diagnose_run,        # Quick diagnostic summary (configurable metric keys)
+    compare_configs,     # Side-by-side config diff between two runs
+    scan_history,        # Smart history scan (auto-selects beta_scan_history for large runs)
 )
 ```
 
@@ -118,13 +136,21 @@ Weave traces and W&B run histories can be enormous. Never dump raw data into con
 ```python
 import pandas as pd
 import numpy as np
+from wandb_helpers import get_api, scan_history
+
+api = get_api()  # timeout=60 for large projects
+run = api.run(f"{path}/run-id")
 
 # BAD: prints thousands of rows into context
 for row in run.scan_history(keys=["loss"]):
     print(row)
 
-# GOOD: load into numpy, compute stats, print summary
-losses = np.array([r["loss"] for r in run.scan_history(keys=["loss"])])
+# BAD: no keys — will 502 on runs with 1K+ metrics
+run.history()
+
+# GOOD: use scan_history helper with explicit keys + max_rows guard
+rows = scan_history(run, keys=["loss"], max_rows=50_000)
+losses = np.array([r["loss"] for r in rows])
 print(f"Loss: {len(losses)} steps, min={losses.min():.4f}, "
       f"final={losses[-1]:.4f}, mean_last_10%={losses[-len(losses)//10:].mean():.4f}")
 ```
@@ -173,24 +199,95 @@ Use whichever run/install commands you wrote in the **Python environment detecti
 
 ## Quick starts
 
-### W&B SDK — training runs
+### Step 0: Probe the project (DO THIS FIRST on unfamiliar projects)
 
 ```python
-import wandb
-import pandas as pd
-api = wandb.Api()
+from wandb_helpers import get_api, probe_project
 
+api = get_api()  # timeout=60
 path = f"{entity}/{project}"
-runs = api.runs(path, filters={"state": "finished"}, order="-created_at")
 
-# Convert to DataFrame (always slice — never list() all runs)
-from wandb_helpers import runs_to_dataframe
-rows = runs_to_dataframe(runs, limit=100, metric_keys=["loss", "val_loss", "accuracy"])
+info = probe_project(api, path)
+print(f"Metrics per run: {info['sample_metric_count']}")
+print(f"Has step history: {info['has_step_history']}")
+print(f"Recommended per_page: {info['recommended_per_page']}")
+print(f"Sample metrics: {info['sample_metric_keys'][:10]}")
+if info['warnings']:
+    print(f"WARNINGS: {info['warnings']}")
+```
+
+This tells you:
+- How many metrics exist (determines if you MUST pass `keys=`)
+- Whether runs have step history (determines scan_history vs summary-only analysis)
+- What `per_page` to use (high metric count = smaller pages)
+- What metric keys are available (so you don't guess wrong names)
+
+### W&B SDK — training runs (large project safe)
+
+```python
+import pandas as pd
+from wandb_helpers import get_api, fetch_runs
+
+api = get_api()  # timeout=60
+path = f"{entity}/{project}"
+
+# fetch_runs uses GraphQL field selection — only fetches the metrics you ask for.
+# On projects with 20K+ metrics per run, this is 17x faster than the standard SDK
+# (fetches ~50 bytes vs 771KB per run summary).
+rows = fetch_runs(
+    api, path,
+    metric_keys=["loss", "acc"],
+    filters={"state": "finished"},
+    limit=100,
+)
 df = pd.DataFrame(rows)
 print(df.describe())
 ```
 
-For full W&B SDK reference (filters, history, artifacts, sweeps), read `references/WANDB_SDK.md`.
+### W&B SDK — find best runs (server-side)
+
+```python
+# Let the server sort — don't fetch all runs and sort client-side
+api = get_api()
+best = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss", per_page=10)[:10]
+for run in best:
+    print(f"  {run.name}: loss={run.summary_metrics.get('loss')}")
+```
+
+### W&B SDK — filter by metric threshold (server-side)
+
+```python
+# Server-side filter: find runs where acc > 0.9
+api = get_api()
+good_runs = api.runs(path, filters={
+    "$and": [
+        {"state": "finished"},
+        {"summary_metrics.acc": {"$gt": 0.9}},
+    ]
+}, order="-summary_metrics.acc", per_page=50)
+for run in good_runs[:20]:
+    print(f"  {run.name}: acc={run.summary_metrics.get('acc')}")
+```
+
+### W&B SDK — history analysis (single run)
+
+```python
+from wandb_helpers import get_api, scan_history
+import numpy as np
+
+api = get_api()
+run = api.run(f"{path}/run-id")
+
+# ALWAYS use explicit keys — never call without keys on large projects
+# scan_history auto-selects beta_scan_history (parquet) for 10K+ step runs
+rows = scan_history(run, keys=["loss", "val_loss"])
+losses = np.array([r.get("loss") for r in rows if r.get("loss") is not None])
+print(f"Loss: {len(losses)} steps, min={losses.min():.6f}, final={losses[-1]:.6f}")
+
+# For sampled overview (faster, less precise)
+df = run.history(samples=500, keys=["loss", "val_loss"])
+print(df.describe())
+```
 
 ### Weave — SDK
 
@@ -261,15 +358,63 @@ call_with_costs = client.get_call("id", include_costs=True)
 costs = call_with_costs.summary.get("weave", {}).get("costs", {})
 ```
 
-### Run diagnostics
+### Run diagnostics (large project safe)
 
 ```python
-from wandb_helpers import diagnose_run
+from wandb_helpers import get_api, diagnose_run
 
+api = get_api()
 run = api.run(f"{path}/run-id")
-diag = diagnose_run(run)
+
+# Discover available metrics first
+metric_keys = [k for k in run.summary_metrics.keys() if not k.startswith("_")]
+print(f"Available metrics ({len(metric_keys)}): {metric_keys[:20]}")
+
+# Use the actual metric key — don't assume "loss" exists
+diag = diagnose_run(run, train_key="loss", val_key="val_loss")
 for k, v in diag.items():
     print(f"  {k}: {v}")
+```
+
+### Cross-run metric search (server-side)
+
+On large projects, **never iterate all runs client-side to find metric values**. Use server-side filters:
+
+```python
+api = get_api()
+
+# Find runs where a specific metric exceeds a threshold
+runs = api.runs(path, filters={
+    "summary_metrics.train1": {"$gt": 10}
+}, per_page=50)
+for run in runs[:50]:
+    print(f"  {run.name}: train1={run.summary_metrics.get('train1')}")
+
+# Find runs where a metric went negative (check summary)
+runs = api.runs(path, filters={
+    "summary_metrics.reward": {"$lt": 0}
+}, per_page=50)
+```
+
+### History analysis across multiple runs
+
+```python
+from wandb_helpers import get_api, scan_history
+import pandas as pd
+
+api = get_api()
+runs = api.runs(path, filters={"state": "finished"}, order="-created_at", per_page=10)
+
+# Analyze history for a few runs — don't try to load history for 100+ runs
+all_data = []
+for run in runs[:5]:
+    rows = scan_history(run, keys=["loss"], max_rows=10_000)
+    for r in rows:
+        r["run_name"] = run.name
+    all_data.extend(rows)
+
+df = pd.DataFrame(all_data)
+print(df.groupby("run_name")["loss"].describe())
 ```
 
 ### Error analysis — open coding to axial coding
@@ -347,13 +492,20 @@ report = wr.Report(
 
 | Gotcha | Wrong | Right |
 |--------|-------|-------|
+| API timeout | `wandb.Api()` (19s default) | `wandb.Api(timeout=60)` or `get_api()` |
 | Summary access | `run.summary["loss"]` | `run.summary_metrics.get("loss")` |
 | Loading all runs | `list(api.runs(...))` | `runs[:200]` (always slice) |
+| Counting runs | `len(api.runs(...))` on large project | Skip count, just `runs[:N]` |
+| Pagination | `api.runs(path)` (per_page=50 default) | `api.runs(path, per_page=min(N, 1000))` |
 | History — all fields | `run.history()` | `run.history(samples=500, keys=["loss"])` |
-| scan_history — no keys | `scan_history()` | `scan_history(keys=["loss"])` (explicit) |
+| History — no keys on large run | `run.history(samples=10)` → **502** | `run.history(samples=10, keys=["loss"])` |
+| scan_history — no keys | `scan_history()` → timeout | `scan_history(keys=["loss"])` (explicit) |
+| Large history (10K+ steps) | `scan_history(keys=[...])` | `beta_scan_history(keys=[...])` (parquet) |
+| Config iteration | `for k,v in run.config.items()` | `run.config.get("lr")` (specific keys) |
 | Raw data in context | `print(run.history())` | Load into DataFrame, compute stats |
 | Metric at step N | iterate entire history | `scan_history(keys=["loss"], min_step=N, max_step=N+1)` |
 | Cache staleness | reading live run | `api.flush()` first |
+| Cross-run metric search | iterate all runs client-side | Server-side filter: `{"summary_metrics.X": {"$gt": Y}}` |
 
 ### Package management
 
@@ -376,18 +528,30 @@ logging.getLogger("weave").setLevel(logging.ERROR)
 ## Quick reference
 
 ```python
+from wandb_helpers import get_api, runs_to_dataframe, scan_history
+import pandas as pd
+import numpy as np
+
+api = get_api()  # timeout=60
+path = f"{entity}/{project}"
+
 # --- Weave: Init and get calls ---
 import weave
 client = weave.init(f"{entity}/{project}")
 calls = client.get_calls(limit=10)
 
-# --- W&B: Best run by loss ---
-best = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss")[:1]
+# --- W&B: Best run by loss (server-side sort) ---
+best = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss", per_page=1)[:1]
 print(f"Best: {best[0].name}, loss={best[0].summary_metrics.get('loss')}")
 
-# --- W&B: Loss curve to numpy ---
-losses = np.array([r["loss"] for r in run.scan_history(keys=["loss"])])
+# --- W&B: Loss curve to numpy (with explicit keys) ---
+rows = scan_history(run, keys=["loss"])
+losses = np.array([r["loss"] for r in rows])
 print(f"min={losses.min():.6f}, final={losses[-1]:.6f}, steps={len(losses)}")
+
+# --- W&B: Runs to DataFrame (selective) ---
+runs = api.runs(path, filters={"state": "finished"}, per_page=100)
+df = pd.DataFrame(runs_to_dataframe(runs, limit=100, metric_keys=["loss", "acc"]))
 
 # --- W&B: Compare two runs ---
 from wandb_helpers import compare_configs
