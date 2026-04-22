@@ -25,8 +25,10 @@ If you want to contribute changes to a mirrored skill:
   `core/services/wb_agent/src/agent_repository/context_content/skills/<internal-name>/`.
   Once merged, the change flows here automatically on the next publish cycle.
 - Drive-by fixes directly in this repo are still welcome for typos, links,
-  and similar. The next automated publish PR will surface any divergence
-  for human review, so nothing is silently overwritten.
+  and similar. The next automated publish PR will include a unified diff
+  of the staged tree against `main`; maintainers reconcile any drive-by
+  edits during PR review before merging. The pipeline itself does not
+  force-overwrite: it only proposes a PR, and human review is the gate.
 - Never edit `.publish_manifest.json` manually.
 
 A skill opts into being mirrored by adding a `public:` block to its
@@ -53,7 +55,7 @@ contributions!
 - The Skills source are licensed under the Apache-2.0 license to protect the
   rights of all parties.
 
-Licensing state & SPDX bill-of-materials (BOM) can be valiated & generated with:
+Licensing state & SPDX bill-of-materials (BOM) can be validated & generated with:
 ```shell
 reuse lint
 reuse spdx
