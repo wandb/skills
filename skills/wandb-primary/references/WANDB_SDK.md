@@ -10,24 +10,29 @@ Reference for querying Weights & Biases training data using the `wandb` Python S
 
 **Key principle**: Always load data into pandas/numpy for analysis. Never dump raw history or run lists into context — it will overwhelm your working memory. Look at structure first, then query specific fields.
 
-## Quick Start
+## CRITICAL: API initialization for large projects
 
 ```python
 import wandb
 import pandas as pd
 import numpy as np
 
-api = wandb.Api()
+# ALWAYS use timeout=60 (or higher) for large projects.
+# The default 19s timeout causes constant failures on projects with 10K+ runs
+# or runs with 1K+ summary metrics.
+api = wandb.Api(timeout=60)
 
-# Entity and project from environment
 import os
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
 path = f"{entity}/{project}"
 
-# List runs
-runs = api.runs(path, filters={"state": "finished"}, order="-created_at")
-print(f"Found {len(runs)} finished runs")
+# Use per_page to minimize pagination round-trips on large projects
+runs = api.runs(path, filters={"state": "finished"}, order="-created_at", per_page=100)
+
+# AVOID len(runs) on large projects — it triggers a slow count query (5s+)
+# Instead, just slice directly:
+first_50 = runs[:50]
 ```
 
 ---
@@ -98,9 +103,15 @@ runs = api.runs(path, order="-summary_metrics.val_acc")  # highest accuracy firs
 ### Pagination
 
 ```python
+# IMPORTANT: Use per_page to control page size.
+# Default is 50 — on projects with 20K metrics per run, each page is huge.
+# Use per_page=min(N, 1000) to minimize round-trips.
 runs = api.runs(path, per_page=100)
 first_50 = runs[:50]    # slice to limit (lazy)
-total = len(runs)        # triggers count query
+
+# AVOID on large projects — triggers expensive count query (5s+):
+# total = len(runs)
+# Instead, just slice and iterate.
 ```
 
 **IMPORTANT**: Always slice runs — never `list()` all runs on large projects.
@@ -122,29 +133,39 @@ run.path         # list: [entity, project, run_id]
 run.state        # "finished", "failed", "crashed", "running"
 run.created_at   # str: ISO timestamp
 run.tags         # list[str]
+run.lastHistoryStep  # int: last step number (-1 if no history)
 
 # Config (hyperparameters)
 run.config       # dict — logged at wandb.init()
 lr = run.config.get("learning_rate")
-clean_config = {k: v for k, v in run.config.items() if not k.startswith("_")}
+# On large projects, DON'T iterate all config keys unless needed:
+# clean_config = {k: v for k, v in run.config.items() if not k.startswith("_")}
+# Instead, access specific keys:
+lr = run.config.get("learning_rate")
+model = run.config.get("model")
 
 # Summary (final metric values)
 run.summary_metrics  # dict (read-only snapshot — prefer for reads)
 final_loss = run.summary_metrics.get("loss")
 ```
 
-### Runs to DataFrame
+### Runs to DataFrame (large project safe)
 
 ```python
-runs = api.runs(path, filters={"state": "finished"}, order="-created_at")
+# IMPORTANT: Use per_page and only access specific metric keys.
+# On runs with 20K metrics, iterating all config/summary keys is slow.
+runs = api.runs(path, filters={"state": "finished"}, order="-created_at", per_page=100)
 rows = []
-for run in runs[:200]:  # ALWAYS slice
+for run in runs[:100]:  # ALWAYS slice
     rows.append({
         "id": run.id,
         "name": run.name,
         "state": run.state,
         "created_at": run.created_at,
-        **{f"config.{k}": v for k, v in run.config.items() if not k.startswith("_")},
+        # Only specific config keys — NOT all config:
+        "config.lr": run.config.get("learning_rate"),
+        "config.model": run.config.get("model"),
+        # Only specific metrics — NOT all summary_metrics:
         "loss": run.summary_metrics.get("loss"),
         "accuracy": run.summary_metrics.get("accuracy"),
     })
@@ -156,13 +177,13 @@ print(df.describe())
 
 ## Metrics History
 
-Two methods with very different behavior:
+Three methods with different performance characteristics:
 
 ### `run.history()` — sampled, fast, DataFrame
 
 ```python
-# Quick 500-point overview (default)
-df = run.history()
+# ALWAYS pass keys= on large projects. Without keys, runs with 1K+ metrics will 502.
+df = run.history(samples=500, keys=["loss", "val_loss"])
 
 # Specific metrics with more samples
 df = run.history(samples=2000, keys=["loss", "val_loss", "learning_rate"])
@@ -170,10 +191,12 @@ df = run.history(samples=2000, keys=["loss", "val_loss", "learning_rate"])
 
 **Behavior**: Server-side downsamples to `samples` points using min/max bucketing. Fast, but misses data points. Good for overviews and plotting.
 
+**WARNING**: `run.history()` without `keys=` fetches ALL metrics. On runs with 1K+ metrics, this will **502 or timeout**.
+
 ### `run.scan_history()` — full, unsampled, iterator
 
 ```python
-# ALL loss values (no sampling)
+# ALWAYS pass keys= — same 502 risk as history() without keys
 losses = [row["loss"] for row in run.scan_history(keys=["loss"])]
 
 # Step range
@@ -185,22 +208,53 @@ rows = list(run.scan_history(keys=["loss", "val_loss"], page_size=2000))
 df = pd.DataFrame(rows)
 ```
 
-**Behavior**: Returns ALL logged rows, unsampled. Use when you need precision.
+**Behavior**: Returns ALL logged rows, unsampled. Uses GraphQL pagination. Good for precision on runs with <10K steps.
+
+### `run.beta_scan_history()` — parquet-backed, fast for large histories
+
+```python
+# Downloads history from parquet files instead of GraphQL pagination.
+# Significantly faster for runs with 10K+ steps.
+# ALWAYS pass keys= to avoid downloading all columns.
+
+# Basic usage
+for row in run.beta_scan_history(keys=["loss"]):
+    print(row)
+
+# With step range and page size
+rows = list(run.beta_scan_history(
+    keys=["loss", "val_loss"],
+    min_step=0,
+    max_step=10000,
+    page_size=10_000,
+))
+df = pd.DataFrame(rows)
+
+# With caching (default True — skips re-download)
+rows = list(run.beta_scan_history(keys=["loss"], use_cache=True))
+```
+
+**Behavior**: Downloads parquet history files, then reads locally. First call downloads the file; subsequent calls with `use_cache=True` read from local cache. Faster than `scan_history()` for large runs (10K+ steps), but has download overhead for small runs.
+
+**WARNING**: `beta_scan_history()` without `keys=` downloads ALL metric columns in the parquet file. On runs with 20K metrics, this can take **300+ seconds**.
 
 ### When to use which
 
-| Use case | Method |
-|----------|--------|
-| Quick plot / overview | `history(samples=500)` |
-| Dashboard summary | `history(samples=1000, keys=[...])` |
-| Anomaly detection | `scan_history(keys=[...])` |
-| Exact loss values | `scan_history(keys=["loss"])` |
-| System metrics (GPU/CPU) | `history(stream="system")` |
-| Very long runs | `scan_history()` (iterator) |
+| Use case | Method | Why |
+|----------|--------|-----|
+| Quick plot / overview | `history(samples=500, keys=[...])` | Fast, sampled |
+| Dashboard summary | `history(samples=1000, keys=[...])` | Fast, sampled |
+| Exact values, <10K steps | `scan_history(keys=[...])` | Low overhead |
+| Exact values, 10K+ steps | `beta_scan_history(keys=[...])` | Parquet is faster |
+| Repeated reads of same run | `beta_scan_history(keys=[...], use_cache=True)` | Cached locally |
+| System metrics (GPU/CPU) | `history(stream="system")` | Separate stream |
+| Step range query | `scan_history(keys=[...], min_step=N, max_step=M)` | Built-in range |
 
 ### Bulk history — multiple runs
 
 ```python
+# Works on small projects, but can timeout on large projects with many metrics.
+# ALWAYS pass keys= to avoid fetching all columns.
 runs = api.runs(path, filters={"state": "finished"})
 df = runs.histories(samples=200, keys=["loss", "val_loss"], format="pandas")
 # df has columns: run_id, _step, loss, val_loss
@@ -212,18 +266,40 @@ df = runs.histories(samples=200, keys=["loss", "val_loss"], format="pandas")
 
 **Rule**: Always use pandas and numpy. Never print raw data into context.
 
+### Discovering available metrics (do this first on unfamiliar projects)
+
+```python
+run = api.run(f"{path}/run-id")
+
+# Check what metrics exist
+all_keys = sorted(run.summary_metrics.keys())
+metric_keys = [k for k in all_keys if not k.startswith("_")]
+print(f"Total metric keys: {len(metric_keys)}")
+print(f"First 30: {metric_keys[:30]}")
+
+# Check if run has step history
+print(f"Last history step: {run.lastHistoryStep}")
+# -1 means no step history (all data is in summary only)
+```
+
 ### Finding the minimum loss
 
 ```python
-df = pd.DataFrame(list(run.scan_history(keys=["loss", "_step"])))
+from wandb_helpers import scan_history
+
+rows = scan_history(run, keys=["loss"])
+df = pd.DataFrame(rows)
 min_idx = df["loss"].idxmin()
-print(f"Min loss: {df.loc[min_idx, 'loss']:.6f} at step {df.loc[min_idx, '_step']}")
+print(f"Min loss: {df.loc[min_idx, 'loss']:.6f} at index {min_idx}")
 ```
 
 ### Rolling statistics for smoothed analysis
 
 ```python
-df = pd.DataFrame(list(run.scan_history(keys=["loss"])))
+from wandb_helpers import scan_history
+
+rows = scan_history(run, keys=["loss"])
+df = pd.DataFrame(rows)
 loss = df["loss"].dropna()
 
 window = 50
@@ -268,7 +344,10 @@ if nan_steps:
 ### Overfitting detection
 
 ```python
-df = pd.DataFrame(list(run.scan_history(keys=["loss", "val_loss"])))
+from wandb_helpers import scan_history
+
+rows = scan_history(run, keys=["loss", "val_loss"])
+df = pd.DataFrame(rows)
 train = df["loss"].dropna()
 val = df["val_loss"].dropna()
 
@@ -284,13 +363,16 @@ if len(val) > 10:
 ### Sweep analysis — finding best hyperparameters
 
 ```python
-runs = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss")
+# Use server-side sort to get best runs first
+runs = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss", per_page=100)
 rows = []
 for run in runs[:100]:
-    config = {k: v for k, v in run.config.items() if not k.startswith("_")}
     rows.append({
         "name": run.name,
-        **config,
+        # Only specific config keys — don't iterate all config
+        "lr": run.config.get("learning_rate"),
+        "model": run.config.get("model"),
+        "batch_size": run.config.get("batch_size"),
         "loss": run.summary_metrics.get("loss"),
         "val_loss": run.summary_metrics.get("val_loss"),
     })
@@ -313,18 +395,41 @@ if "loss" in numeric.columns:
 run_a = api.run(f"{path}/run-a")
 run_b = api.run(f"{path}/run-b")
 
-# Config diff
-config_df = pd.DataFrame([run_a.config, run_b.config]).T
-config_df.columns = [run_a.name, run_b.name]
-diff = config_df[config_df.iloc[:, 0] != config_df.iloc[:, 1]]
-print("Config differences:")
-print(diff.to_string())
+# Config diff — use compare_configs helper for selective comparison
+from wandb_helpers import compare_configs
+diffs = compare_configs(run_a, run_b, keys=["learning_rate", "model", "batch_size"])
+print(pd.DataFrame(diffs).to_string(index=False))
 
 # Metric comparison
 for key in ["loss", "accuracy", "val_loss"]:
     a = run_a.summary_metrics.get(key, "N/A")
     b = run_b.summary_metrics.get(key, "N/A")
     print(f"  {key}: {a} vs {b}")
+```
+
+### Cross-run metric search (server-side filters)
+
+On large projects, **always use server-side filters** instead of iterating all runs:
+
+```python
+# Find runs where a metric exceeds a threshold
+high_acc = api.runs(path, filters={
+    "summary_metrics.accuracy": {"$gt": 0.95}
+}, order="-summary_metrics.accuracy", per_page=50)
+
+# Find runs where a metric is negative
+negative_reward = api.runs(path, filters={
+    "summary_metrics.reward": {"$lt": 0}
+}, per_page=50)
+
+# Combine metric + config filters
+specific = api.runs(path, filters={
+    "$and": [
+        {"config.model": "transformer"},
+        {"summary_metrics.loss": {"$lt": 0.1}},
+        {"state": "finished"},
+    ]
+}, per_page=50)
 ```
 
 ---
@@ -404,36 +509,48 @@ for p in projects[:20]:
 
 | Gotcha | Wrong | Right |
 |--------|-------|-------|
+| API timeout | `wandb.Api()` (19s default) | `wandb.Api(timeout=60)` |
 | Summary access | `run.summary["loss"]` | `run.summary_metrics.get("loss")` |
 | Loading all runs | `list(api.runs(...))` | `runs[:200]` (always slice) |
-| History — all fields | `run.history()` | `run.history(samples=500, keys=["loss"])` |
-| History — no keys | `scan_history()` | `scan_history(keys=["loss"])` (explicit) |
-| Raw data in context | `print(run.history())` | Load into DataFrame, compute stats, print summary |
-| Comparing configs | manual key-by-key | `pd.DataFrame([a.config, b.config]).T` |
+| Counting runs | `len(runs)` on large project (5s+) | Just `runs[:N]` |
+| Pagination | `api.runs(path)` (per_page=50 default) | `api.runs(path, per_page=min(N, 1000))` |
+| History — all fields | `run.history()` → **502** on 1K+ metrics | `run.history(samples=500, keys=["loss"])` |
+| scan_history — no keys | `scan_history()` → timeout | `scan_history(keys=["loss"])` (explicit) |
+| Large history (10K+ steps) | `scan_history(keys=[...])` (slow GraphQL) | `beta_scan_history(keys=[...])` (parquet) |
+| beta_scan — no keys | `beta_scan_history()` (300s+) | `beta_scan_history(keys=["loss"])` |
+| Config iteration | `for k,v in run.config.items()` (slow) | `run.config.get("lr")` (specific keys) |
+| Raw data in context | `print(run.history())` | Load into DataFrame, compute stats |
 | Metric at step N | iterate history | `scan_history(keys=["loss"], min_step=N, max_step=N+1)` |
 | Cache staleness | reading live run | `api.flush()` first |
+| Cross-run search | iterate all runs client-side | Server-side: `{"summary_metrics.X": {"$gt": Y}}` |
 
 ---
 
 ## Quick Reference
 
 ```python
-# Find best run by loss
-best = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss")[:1]
-print(f"Best: {best[0].name}, loss={best[0].summary_metrics['loss']}")
+from wandb_helpers import get_api, scan_history
 
-# Get a run's full loss curve into numpy
-losses = np.array([r["loss"] for r in run.scan_history(keys=["loss"])])
+api = get_api()  # timeout=60
+path = f"{entity}/{project}"
+
+# Find best run by loss (server-side sort — no client iteration)
+best = api.runs(path, filters={"state": "finished"}, order="+summary_metrics.loss", per_page=1)[:1]
+print(f"Best: {best[0].name}, loss={best[0].summary_metrics.get('loss')}")
+
+# Get a run's full loss curve into numpy (explicit keys)
+rows = scan_history(run, keys=["loss"])
+losses = np.array([r["loss"] for r in rows])
 print(f"Loss: min={losses.min():.6f}, final={losses[-1]:.6f}, steps={len(losses)}")
 
-# Compare N runs on one metric
-runs = api.runs(path, filters={"state": "finished"})[:20]
+# Compare N runs on one metric (per_page optimized)
+runs = api.runs(path, filters={"state": "finished"}, per_page=20)[:20]
 data = [(r.name, r.summary_metrics.get("loss", float("inf"))) for r in runs]
 df = pd.DataFrame(data, columns=["run", "loss"]).sort_values("loss")
 print(df.to_string(index=False))
 
 # Download best model artifact
-best_run = api.runs(path, order="+summary_metrics.loss")[:1][0]
+best_run = api.runs(path, order="+summary_metrics.loss", per_page=1)[:1][0]
 for art in best_run.logged_artifacts():
     if art.type == "model":
         art.download(root="/tmp/best_model")
