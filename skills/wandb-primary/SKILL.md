@@ -220,9 +220,11 @@ for c in calls:
 
 ### Create a W&B Report
 
+Install once: `uv add wandb-workspaces`. Reports live in the standalone `wandb-workspaces` package; the legacy `wandb.apis.reports` path is deprecated.
+
 ```python
-import wandb, os
-from wandb.apis import reports as wr
+import os
+import wandb_workspaces.reports.v2 as wr
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -241,14 +243,14 @@ report = wr.Report(
     project=project,
     title="Project Analysis",
     description="Auto-generated summary",
-    width="fixed",
+    width="fixed",  # "readable" | "fixed" | "fluid"
     blocks=[
         wr.H1(text="Project Analysis"),
         wr.P(text="Auto-generated summary from W&B API."),
         plots,
     ],
 )
-report.save(draft=True)
+report.save(draft=True)  # omit draft=True to publish
 print(f"Report saved: {report.url}")
 ```
 
@@ -482,7 +484,8 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 | Extract eval results for analysis | **`weave_helpers.eval_results_to_dicts()`** |
 | Count traces without fetching them | **`calls_query_stats`** from Weave server API |
 | Need low-level Weave filtering (CallsFilter, Query) | **Raw Weave SDK** — see `references/WEAVE_SDK.md` |
-| Create a report | **`wandb.apis.reports`** |
+| Create a report | **`wandb_workspaces.reports.v2`** |
+| Create or modify a workspace | **`wandb_workspaces.workspaces`** |
 | Set up production monitoring | **`weave.Monitor`** |
 | Reproduce/relaunch a run | **`launch_helpers.relaunch_run()`** or CLI |
 | Launch a training job on GPU/K8s | **`launch_helpers.submit_code_artifact_job()`** |
@@ -707,15 +710,24 @@ print(f"Tokens: {usage['total_tokens']} (in={usage['input_tokens']}, out={usage[
 
 ### Report authoring (W&B Reports)
 
-```python
-from wandb.apis import reports as wr
+Install: `uv add wandb-workspaces`. Import: `import wandb_workspaces.reports.v2 as wr`. Legacy `wandb.apis.reports` is deprecated — do not use it.
 
-runset = wr.Runset(entity=entity, project=project, name="All runs")
+```python
+import wandb_workspaces.reports.v2 as wr
+
+runset = wr.Runset(
+    entity=entity,
+    project=project,
+    name="All runs",
+    filters="Config('lr') <= 0.001 and State = 'finished'",
+)
 plots = wr.PanelGrid(
     runsets=[runset],
     panels=[
         wr.LinePlot(title="Loss", x="_step", y=["LOSS_KEY"]),
         wr.BarPlot(title="Accuracy", metrics=["ACC_KEY"], orientation="v"),
+        wr.ScatterPlot(title="LR vs Loss", x=wr.Config("lr"), y=wr.SummaryMetric("LOSS_KEY")),
+        wr.ScalarChart(title="F1", metric="f1_score"),
     ],
 )
 
@@ -723,15 +735,63 @@ report = wr.Report(
     entity=entity, project=project,
     title="Project analysis",
     description="Summary of recent runs",
-    width="fixed",
+    width="fixed",  # "readable" | "fixed" | "fluid"
     blocks=[
         wr.H1(text="Project analysis"),
         wr.P(text="Auto-generated summary from W&B API."),
         plots,
     ],
 )
-report.save(draft=True)
+report.save(draft=True)  # omit draft=True to publish
 ```
+
+- Panels: `LinePlot`, `BarPlot`, `ScatterPlot`, `ScalarChart`, `ParallelCoordinatesPlot`, `ParameterImportancePlot`, `CodeComparer`, `RunComparer`, `MediaBrowser`, `MarkdownPanel`.
+- Blocks: `H1`/`H2`/`H3`, `P`, `CodeBlock(code=..., language="python")`, `MarkdownBlock`, `Image(url=...)`, `TableOfContents()`, `HorizontalRule()`.
+- Panel sizing: any panel accepts `layout=wr.Layout(x=0, y=0, w=8, h=6)`.
+- Load existing: `wr.Report.from_url("https://wandb.ai/entity/project/reports/Title--id")`.
+
+### Workspace authoring (W&B Workspaces)
+
+Same package as Reports. `workspace.save()` upserts; `save_as_new_view()` creates a copy. Panels are shared with Reports (`wr.*`).
+
+```python
+import wandb_workspaces.workspaces as ws
+import wandb_workspaces.reports.v2 as wr
+from wandb_workspaces import expr
+
+workspace = ws.Workspace(
+    entity=entity,
+    project=project,
+    name="Training Overview",
+    sections=[
+        ws.Section(
+            name="Loss Curves",
+            panels=[
+                wr.LinePlot(x="Step", y=["TRAIN_LOSS_KEY", "VAL_LOSS_KEY"]),
+                wr.ScalarChart(metric="BEST_ACC_KEY"),
+            ],
+            is_open=True,
+        ),
+    ],
+    settings=ws.WorkspaceSettings(
+        x_axis="Step",
+        smoothing_type="exponential",  # "exponential" | "gaussian" | "average" | "none"
+        smoothing_weight=50,
+        ignore_outliers=True,
+        max_runs=20,
+    ),
+    runset_settings=ws.RunsetSettings(
+        filters=[expr.Config("experiment") == "EXPERIMENT_NAME"],
+        groupby=[expr.Config("model_type")],
+        pinned_columns=["summary:accuracy", "config:lr"],
+    ),
+)
+workspace.save()
+```
+
+- Load existing: `ws.Workspace.from_url("https://wandb.ai/entity/project?nw=abc123")`.
+- Section options: `is_open` (bool), `pinned` (bool), `layout_settings=ws.SectionLayoutSettings(columns=3, rows=2)`, `panel_settings=ws.SectionPanelSettings(x_axis="Step")`.
+- Per-run style: `ws.RunsetSettings(run_settings={"run_id": ws.RunSettings(color="red", disabled=False)})`.
 
 ---
 
@@ -768,6 +828,8 @@ report.save(draft=True)
 | scan_history — no keys | `scan_history()` -> timeout | `scan_history(keys=["LOSS_KEY"])` |
 | Large history (10K+ steps) | `scan_history(keys=[...])` | `beta_scan_history(keys=[...])` (parquet) |
 | Cross-run search | iterate all runs client-side | Server-side filter: `{"summary_metrics.X": {"$gt": Y}}` |
+| Reports import | `from wandb.apis import reports as wr` | `import wandb_workspaces.reports.v2 as wr` |
+| Reports install | `pip install "wandb[workspaces]"` | `uv add wandb-workspaces` (standalone package) |
 
 ### Launch
 
