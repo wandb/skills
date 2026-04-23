@@ -1,9 +1,3 @@
-<!--
-SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
-SPDX-License-Identifier: Apache-2.0
-SPDX-PackageName: skills
--->
-
 # W&B Concepts & Nomenclature
 
 Reference for understanding W&B's data model, terminology, and common points of confusion. Read this when interpreting user requests or debugging unexpected data locations.
@@ -487,5 +481,3 @@ When a user asks "why don't I see traces?" — check if their framework is in th
 | "best loss" | Minimum loss across history (or summary if `define_metric` was used) | Check `summary_metrics` first, fall back to `scan_history` |
 | "run X" (short hash) | Run by ID | `api.run("entity/project/X")` |
 | "run X" (words) | Run by display name | `api.runs(path, filters={"display_name": "X"})` |
-
-<!-- publish-metadata-scrub-verification -->
