@@ -26,6 +26,20 @@ artifacts, tags, groups, team members, and run histories.
 - Do not use this skill alone for Weave trace/eval counts, report authoring,
   Launch, Signal Builder, or mixed project-overview tasks.
 
+## Read-Only Status And Count Boundary
+
+Use this skill for run status and count questions. Keep these tasks read-only:
+
+- Do not use Launch, Reports, Signal Builder, or Weave APIs for run count/status
+  questions unless the user explicitly asks about those surfaces.
+- Do not create runs, artifacts, reports, monitors, queues, jobs, or launch
+  submissions while answering count/status questions.
+- For status questions, report exact W&B run counts from `wandb.Api().runs(...)`
+  filters. Do not infer status from sampled recent runs.
+- If the user asks only for status totals, stop after exact status counts and a
+  short method note. Do not probe metrics, configs, history, artifacts, or other
+  skills.
+
 ## Exact Artifact Count Protocol
 
 Use this for artifact count, artifact type, collection count, or artifact version
@@ -193,6 +207,21 @@ I queried W&B runs for {entity}/{project} with exact `api.runs(..., per_page=1, 
 - other: {other}
 - failed_or_crashed: {failed_or_crashed}
 - failure_rate: {failure_rate:.1f}% using failed_or_crashed / total
+```
+
+Use this shorter final-answer template for pure status questions:
+
+```text
+For {entity}/{project}, I used exact W&B Runs API status filters:
+
+- total: {total}
+- finished: {finished}
+- failed: {failed}
+- crashed: {crashed}
+- running: {running}
+- other: {other}
+
+No write APIs, Launch jobs, reports, monitors, or Weave traces were used.
 ```
 
 ## Team Members API

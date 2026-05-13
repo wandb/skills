@@ -17,6 +17,12 @@ evaluate. This is a write-capable workflow; treat it as safety-critical.
 
 ## Rules
 
+- Signal and monitor design starts from Weave evidence: trace ops, sampled
+  calls, scorer outputs, feedback, status fields, and concrete project fields.
+- Do not use Launch APIs for signal design. Launch is only for remote compute,
+  queues, jobs, and relaunching runs.
+- Do not answer signal-design prompts by describing Signal Builder generally.
+  Produce project-grounded binary criteria and a test plan.
 - Always use `signal_helpers.py`; do not hand-roll monitor/scorer writes.
 - Read signal examples before writing prompts.
 - Sample traces and verify fields before interpolating prompt fields.
@@ -62,6 +68,9 @@ Choose this skill when the user asks for any of these:
 Choose `weave-analysis` instead when the user only asks to count traces, inspect
 evals, summarize scorers, list feedback, or report token/cost/model usage. Use
 the most specific W&B skill for ambiguous first-hop routing.
+
+Choose `wandb-launch` only when the user asks to run jobs, queue work, relaunch a
+run, or change remote-compute resources. Signal design is not a Launch task.
 
 ## Rubric-Mapped Workflow
 
@@ -109,6 +118,33 @@ Monitor usage:
 
 Safety:
 - This is a design plan only unless the user confirms a write.
+```
+
+Use this compact customer-facing template when the user asks for a signal design
+without asking you to create it:
+
+```text
+Signal design for {entity}/{project}
+
+Evidence to inspect:
+- Weave ops: {op_names}
+- Sample traces: {sample_size} bounded examples
+- Fields: {input_output_or_summary_fields}
+- Existing scorers/feedback/status fields: {evidence_fields}
+
+Binary criterion:
+- Positive: {conditions_that_make_the_signal_true}
+- Negative: {false_positive_exclusions}
+- Default: false when evidence is ambiguous
+
+Evaluation plan:
+- Test on {n} recent traces across success/error cases
+- Review false positives and false negatives
+- Only attach to a classifier monitor after user confirmation
+
+Safety:
+- This answer is a design only. I would not create or update monitors without
+  explicit confirmation.
 ```
 
 For benchmark signal-design tasks, the answer must be self-contained even when

@@ -15,6 +15,10 @@ jobs to compute and should remain separate from read-only analysis skills.
 ## Rules
 
 - This is a write-capable remote-compute skill, not a run-analysis skill.
+- Do not answer Signal Builder, report authoring, run analysis, run counting,
+  trace counting, eval analysis, or scorer-analysis questions from this skill.
+  Route those to the relevant read-only skill unless the user explicitly asks to
+  launch or relaunch compute.
 - Prefer one helper CLI command for simple relaunches.
 - Use Launch resource args for GPU, CPU, and memory changes rather than inventing
   local training commands.

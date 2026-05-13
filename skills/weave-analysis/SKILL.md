@@ -15,6 +15,10 @@ evaluations, scorers, feedback, token usage, latency, and cost.
 ## Rules
 
 - Use `WANDB_ENTITY` and `WANDB_PROJECT` from the environment or the user request.
+- Once the question is clearly about traces, calls, evaluations, scorers,
+  feedback, cost, tokens, or model usage, stay in this skill. Do not read W&B
+  Models, Reports, Signal Builder, or Launch unless the user asks for those
+  surfaces.
 - Use server-side stats for counts before materializing calls.
 - Distinguish root traces, all calls, eval roots, and child calls.
 - For trace counts, use `client.server.calls_query_stats(...)`; do not page all calls.
@@ -199,6 +203,11 @@ for call in evals:
 
 Use this for tasks that ask for success/error rates per `Evaluation.evaluate`
 call. The counts usually live in the evaluation call summary.
+
+For success-rate tasks, retrieve all relevant `Evaluation.evaluate` calls first,
+then compute rates from their summaries. Do not infer rates from a small sample
+of child calls unless the root summaries lack usable counts and you explicitly
+say you used a fallback.
 
 First try aggregate summary counts on each `Evaluation.evaluate` root. Only fall
 back to child `Evaluation.predict_and_score` calls when the root summary lacks
