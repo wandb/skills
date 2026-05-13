@@ -1,8 +1,10 @@
 # Contributing to wandb skills
 
-1. Create `skills/<your-skill>/SKILL.md` with frontmatter and instructions
-2. Open a PR — CI will run the skill through the eval suite
-3. Merge to `main` to publish
+1. Create `skills/<your-skill>/SKILL.md` with frontmatter and instructions.
+2. Open a PR. CI validates public package shape, frontmatter, helper parsing,
+   and basic sanitization.
+3. Attach W&B Agent Factory benchmark evidence for behavioral changes.
+4. Merge to `main` to publish.
 
 To update an existing installation:
 

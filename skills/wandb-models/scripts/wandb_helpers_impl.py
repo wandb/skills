@@ -33,11 +33,13 @@ Usage (in sandbox):
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 # ---------------------------------------------------------------------------
 # API factory
 # ---------------------------------------------------------------------------
+
 
 def get_api(timeout: int = 60) -> Any:
     """Create a wandb.Api with a safe timeout for large projects.
@@ -47,6 +49,54 @@ def get_api(timeout: int = 60) -> Any:
     """
     import wandb
     return wandb.Api(timeout=timeout)
+
+
+def artifact_collection_summary(api: Any, path: str) -> dict[str, Any]:
+    """Count artifact collections and versions without noisy per-row output.
+
+    Args:
+        api: wandb.Api instance.
+        path: "entity/project" string.
+
+    Returns:
+        Dict with collection_count, version_count, type_counts,
+        versions_by_type, and multi_version_collections.
+    """
+    collection_count = 0
+    version_count = 0
+    type_counts: Counter[str] = Counter()
+    versions_by_type: Counter[str] = Counter()
+    multi_version_collections: list[dict[str, Any]] = []
+
+    for artifact_type in api.artifact_types(path):
+        type_name = artifact_type.name
+        for collection in artifact_type.collections():
+            collection_count += 1
+            type_counts[type_name] += 1
+            artifacts = list(collection.artifacts())
+            collection_versions = len(artifacts)
+            version_count += collection_versions
+            versions_by_type[type_name] += collection_versions
+            if collection_versions > 1:
+                multi_version_collections.append(
+                    {
+                        "name": collection.name,
+                        "type": type_name,
+                        "versions": collection_versions,
+                    }
+                )
+
+    return {
+        "path": path,
+        "collection_count": collection_count,
+        "version_count": version_count,
+        "type_counts": dict(type_counts),
+        "versions_by_type": dict(versions_by_type),
+        "multi_version_collections": sorted(
+            multi_version_collections,
+            key=lambda item: (item["type"], item["name"]),
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +254,7 @@ query Runs($project: String!, $entity: String!, $cursor: String,
 def fetch_runs(
     api: Any,
     path: str,
-    metric_keys: list[str],
+    metric_keys: list[str] | None = None,
     limit: int = 200,
     filters: dict[str, Any] | None = None,
     order: str = "-created_at",
@@ -243,6 +293,7 @@ def fetch_runs(
     entity, project = path.split("/", 1)
 
     # Build the query with specific metric keys
+    metric_keys = metric_keys or []
     keys_json = _json.dumps(metric_keys)
     query = _RUNS_QUERY.replace("%KEYS%", keys_json)
 

@@ -1,12 +1,9 @@
-# SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
-# SPDX-License-Identifier: Apache-2.0
-# SPDX-PackageName: skills
 """
 Helper functions for W&B Launch — queue management, job submission, and run reproduction.
 
 Usage:
     import sys
-    sys.path.insert(0, "skills/wandb-primary/scripts")
+    sys.path.insert(0, "skills/launch/scripts")
     from launch_helpers import (
         create_queue,
         recreate_queue_with_prioritization,
@@ -22,10 +19,10 @@ import os
 import re
 import shutil
 import tempfile
-
 import wandb
 from wandb.sdk.launch._launch_add import launch_add
 from wandb.sdk.launch.create_job import _create_job
+
 
 # ---------------------------------------------------------------------------
 # URL parsing and run analysis
@@ -85,7 +82,7 @@ def _gql_query(api, query_str, variables=None):
     )
     resp.raise_for_status()
     data = resp.json()
-    if data.get("errors"):
+    if "errors" in data and data["errors"]:
         raise Exception(str(data["errors"][0]))
     return data.get("data", {})
 
@@ -434,7 +431,7 @@ def submit_code_artifact_job(
         launch_kwargs["config"] = {"overrides": {"run_config": config}}
 
     queued_run = launch_add(**launch_kwargs)
-    print("Queued! Run ID will be assigned when started.")
+    print(f"Queued! Run ID will be assigned when started.")
     print(f"Queue item ID: {queued_run.id}")
     print(f"To check status later: check_launched_run('{entity}', '{project}', '{queue_name}', '{queued_run.id}')")
 
@@ -662,7 +659,7 @@ def create_and_launch_modified_job(
         launch_kwargs["config"] = {"overrides": {"run_config": config}}
 
     queued_run = launch_add(**launch_kwargs)
-    print("Queued modified job!")
+    print(f"Queued modified job!")
     print(f"Queue item ID: {queued_run.id}")
     print(f"To check status: check_launched_run('{entity}', '{project}', '{queue_name}', '{queued_run.id}')")
     return queued_run
@@ -782,7 +779,7 @@ def check_launched_run(entity, project, queue_name, run_queue_item_id):
                     if summary:
                         print(f"Metrics: {json.dumps(summary, indent=2, default=str)}")
                 except Exception:
-                    print("Run created but not yet accessible via API")
+                    print(f"Run created but not yet accessible via API")
             else:
                 print("Run not yet assigned (still queued)")
         except Exception:

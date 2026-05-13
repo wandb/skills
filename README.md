@@ -41,12 +41,16 @@ export WANDB_API_KEY=<your-key>
 <!-- BEGIN SKILL TABLE -->
 | Skill | Description | Status |
 |-------|-------------|--------|
-| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (tr... | evaluated |
+| [`wandb-models`](skills/wandb-models/) | W&B Models skill for runs, sweeps, artifacts, configs, metrics, run history, best-run selection, and model analysis. | experimental |
+| [`weave-analysis`](skills/weave-analysis/) | W&B Weave skill for traces, calls, evaluations, scorers, token/cost analysis, and model usage. | experimental |
+| [`wandb-reports`](skills/wandb-reports/) | W&B Reports skill for report authoring, workspace guidance, report media, and report/project semantics. | experimental |
+| [`signal-builder`](skills/signal-builder/) | Signal Builder skill for project-grounded monitor and LLM-as-judge signal design. | experimental |
+| [`wandb-launch`](skills/wandb-launch/) | W&B Launch skill for queues, jobs, relaunching runs, and remote compute workflows. | experimental |
 <!-- END SKILL TABLE -->
 
 ## Benchmarks
 
-We maintain a growing internal benchmark suite that evaluates each skill across coding agents and task categories. Skills are evaluated automatically on every merge to `main`.
+We maintain a growing internal benchmark suite that evaluates each skill across coding agents and task categories. The split skills are currently experimental and validated through the W&B Agent Factory benchmark harness.
 
 | Category | Tasks | Claude Code (`sonnet4.6`) | Codex (`gpt-5.3-codex`) |
 |----------|-------|-------------|-------|

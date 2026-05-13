@@ -31,6 +31,7 @@ from typing import Any
 # Recursive unwrap — convert Weave types to plain Python
 # ---------------------------------------------------------------------------
 
+
 def unwrap(obj: Any) -> Any:
     """Recursively convert Weave wrapper types to plain Python dicts/lists.
 
@@ -109,6 +110,35 @@ def get_token_usage(call: Any) -> dict[str, int]:
         "output_tokens": total_output,
         "total_tokens": total_input + total_output,
     }
+
+
+def count_calls_by_op_substring(
+    client: Any,
+    project_id: str,
+    substring: str,
+    *,
+    case_insensitive: bool = False,
+) -> int:
+    """Return an exact server-side count of calls whose op_name contains text.
+
+    Use this instead of sampling recent calls when prompts ask for all calls
+    whose op name contains a substring such as ".score".
+    """
+    from weave.trace_server import trace_server_interface as tsi
+
+    req = tsi.CallsQueryStatsReq(
+        project_id=project_id,
+        query={
+            "$expr": {
+                "$contains": {
+                    "input": {"$getField": "op_name"},
+                    "substr": {"$literal": substring},
+                    "case_insensitive": case_insensitive,
+                }
+            }
+        },
+    )
+    return client.server.calls_query_stats(req).count
 
 
 # ---------------------------------------------------------------------------
