@@ -5,6 +5,8 @@ on:
     paths:
       - "skills/**"
       - "scripts/validate_skills.py"
+      - "scripts/skill_bench/**"
+      - "scripts/tests/**"
       - ".github/workflows/validate-skills.yaml"
   workflow_dispatch:
 
@@ -18,3 +20,5 @@ jobs:
           python-version: "3.12"
       - name: Validate public skill package
         run: python scripts/validate_skills.py
+      - name: Run public skill bench unit tests
+        run: python -m unittest discover scripts/tests -v

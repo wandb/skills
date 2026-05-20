@@ -50,7 +50,10 @@ export WANDB_API_KEY=<your-key>
 
 ## Benchmarks
 
-We maintain a growing internal benchmark suite that evaluates each skill across coding agents and task categories. The split skills are currently experimental and validated through the W&B Agent Factory benchmark harness.
+We maintain benchmark reports that compare public skill changes against the
+appropriate W&B Agent Factory task list. Pull requests get a plan-only report
+when WBAF is available to CI. Maintainers can trigger a live benchmark to compare
+the skill on `main` against the proposed PR version.
 
 | Category | Tasks | Claude Code (`sonnet4.6`) | Codex (`gpt-5.3-codex`) |
 |----------|-------|-------------|-------|
@@ -61,6 +64,9 @@ We maintain a growing internal benchmark suite that evaluates each skill across 
 | Failure & outlier detection | 8 | 86%* | 63%* |
 
 *Pass rates are +/- 3%. Many tasks span multiple categories.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#skill-benchmarks) for how benchmark
+reports work and why live evals are maintainer-gated.
 
 ## Contributing
 
