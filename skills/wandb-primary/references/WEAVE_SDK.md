@@ -74,12 +74,12 @@ from weave.trace_server.trace_server_interface import CallsQueryStatsReq
 
 stats = client.server.calls_query_stats(CallsQueryStatsReq(
     project_id=f"{client.entity}/{client.project}",
-    filter={"op_names": [f"weave:///{client.entity}/{client.project}/op/rollout:*"]},
+    filter={"op_names": [f"weave:///{client.entity}/{client.project}/op/my_op:*"]},
 ))
-print(f"rollout call count: {stats.count}")
+print(f"my_op call count: {stats.count}")
 
 # Count by different op names
-for op_name in ["rollout", "ruler_score_group", "openai.chat.completions.create"]:
+for op_name in ["my_op", "my_scorer.score", "openai.chat.completions.create"]:
     stats = client.server.calls_query_stats(CallsQueryStatsReq(
         project_id=f"{client.entity}/{client.project}",
         filter={"op_names": [f"weave:///{client.entity}/{client.project}/op/{op_name}:*"]},

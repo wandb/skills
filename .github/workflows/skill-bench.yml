@@ -1,0 +1,146 @@
+name: Skill bench
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - ".github/workflows/skill-bench.yml"
+  workflow_dispatch:
+    inputs:
+      suite_preset:
+        description: "Benchmark preset: smoke, public-compatible, models-basic, weave-basic, full-internal"
+        default: "smoke"
+        required: true
+      skill:
+        description: "Skill to smoke-check against public main"
+        default: "wandb-primary"
+        required: true
+      wbaf_ref:
+        description: "WandBAgentFactory ref to use"
+        default: "ash0ts/clean-core-skillbench-devci"
+        required: true
+      live:
+        description: "Run live eval instead of plan-only"
+        default: "false"
+        required: true
+
+jobs:
+  plan:
+    name: Plan WBAF skill bench
+    runs-on: ubuntu-latest
+    env:
+      WBAF_REPO_TOKEN: ${{ secrets.WBAF_REPO_TOKEN }}
+    steps:
+      - name: Checkout public skills
+        uses: actions/checkout@v4
+        with:
+          path: skills-repo
+
+      - name: Checkout WBAF
+        if: env.WBAF_REPO_TOKEN != ''
+        uses: actions/checkout@v4
+        with:
+          repository: wandb/WandBAgentFactory
+          ref: ${{ vars.WBAF_SKILL_BENCH_REF || github.event.inputs.wbaf_ref || 'ash0ts/clean-core-skillbench-devci' }}
+          path: wbaf
+          token: ${{ secrets.WBAF_REPO_TOKEN }}
+
+      - name: Skip WBAF plan without private repo token
+        if: env.WBAF_REPO_TOKEN == ''
+        run: |
+          echo "::notice::Skipping WBAF skill-bench plan because WBAF_REPO_TOKEN is not configured."
+          exit 0
+
+      - name: Set up uv
+        if: env.WBAF_REPO_TOKEN != ''
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        if: env.WBAF_REPO_TOKEN != ''
+        working-directory: wbaf
+        run: uv python install
+
+      - name: Install WBAF dependencies
+        if: env.WBAF_REPO_TOKEN != ''
+        working-directory: wbaf
+        run: uv sync --group dev
+
+      - name: Stage current public PR as candidate
+        if: env.WBAF_REPO_TOKEN != ''
+        working-directory: wbaf
+        run: |
+          uv run python -m developer.skill_bench.dev candidate-from-public \
+            --candidate public-pr \
+            --source-root "$GITHUB_WORKSPACE/skills-repo"
+          uv run python -m developer.skill_bench.dev candidate-validate \
+            --candidate public-pr
+
+      - name: Plan public-compatible benchmark
+        if: env.WBAF_REPO_TOKEN != ''
+        working-directory: wbaf
+        run: |
+          make skills-bench-plan-candidate \
+            CANDIDATE=public-pr \
+            SKILL="${{ github.event.inputs.skill || 'wandb-primary' }}" \
+            SUITE_PRESET="${{ github.event.inputs.suite_preset || 'public-compatible' }}"
+
+      - name: Upload plan artifacts
+        if: env.WBAF_REPO_TOKEN != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-bench-plan
+          path: wbaf/.tmp/skill-bench/
+
+  live:
+    name: Live skill bench
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.live == 'true'
+    runs-on: ubuntu-latest
+    env:
+      WBAF_REPO_TOKEN: ${{ secrets.WBAF_REPO_TOKEN }}
+      WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GUARDRAILS_WANDB_ENTITY: ${{ vars.GUARDRAILS_WANDB_ENTITY || 'wandb-agent-guardrails' }}
+      GUARDRAILS_WANDB_API_KEY: ${{ secrets.GUARDRAILS_WANDB_API_KEY || secrets.WANDB_API_KEY }}
+    steps:
+      - name: Checkout public skills
+        uses: actions/checkout@v4
+        with:
+          path: skills-repo
+
+      - name: Checkout WBAF
+        uses: actions/checkout@v4
+        with:
+          repository: wandb/WandBAgentFactory
+          ref: ${{ github.event.inputs.wbaf_ref }}
+          path: wbaf
+          token: ${{ secrets.WBAF_REPO_TOKEN }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        working-directory: wbaf
+        run: uv python install
+
+      - name: Install WBAF dependencies
+        working-directory: wbaf
+        run: uv sync --group dev
+
+      - name: Stage current public PR as candidate
+        working-directory: wbaf
+        run: |
+          uv run python -m developer.skill_bench.dev candidate-from-public \
+            --candidate public-pr \
+            --source-root "$GITHUB_WORKSPACE/skills-repo"
+          uv run python -m developer.skill_bench.dev candidate-validate \
+            --candidate public-pr
+
+      - name: Run selected live benchmark
+        working-directory: wbaf
+        run: |
+          make skills-bench-plan-candidate \
+            CANDIDATE=public-pr \
+            SKILL="${{ github.event.inputs.skill }}" \
+            SUITE_PRESET="${{ github.event.inputs.suite_preset }}"
+          bash ".tmp/skill-bench/plans/candidates/public-pr/candidate/planned-command.sh"

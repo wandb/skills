@@ -41,12 +41,12 @@ export WANDB_API_KEY=<your-key>
 <!-- BEGIN SKILL TABLE -->
 | Skill | Description | Status |
 |-------|-------------|--------|
-| [`wandb-primary`](skills/wandb-primary/) | Comprehensive primary skill for agents working with Weights & Biases. Covers both the W&B SDK (tr... | evaluated |
+| [`wandb-primary`](skills/wandb-primary/) | Primary W&B skill for broad, mixed-surface W&B project analysis and workflows across runs, Weave, Reports, Signal Builder, and Launch. | experimental |
 <!-- END SKILL TABLE -->
 
 ## Benchmarks
 
-We maintain a growing internal benchmark suite that evaluates each skill across coding agents and task categories. Skills are evaluated automatically on every merge to `main`.
+We maintain a growing internal benchmark suite that evaluates each skill across coding agents and task categories. Skills are validated through the W&B Agent Factory benchmark harness.
 
 | Category | Tasks | Claude Code (`sonnet4.6`) | Codex (`gpt-5.3-codex`) |
 |----------|-------|-------------|-------|

@@ -3,7 +3,6 @@ SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
 SPDX-License-Identifier: Apache-2.0
 SPDX-PackageName: skills
 -->
-
 # W&B Concepts & Nomenclature
 
 Reference for understanding W&B's data model, terminology, and common points of confusion. Read this when interpreting user requests or debugging unexpected data locations.
@@ -145,7 +144,7 @@ Entity (username or team)
 ### name vs id — a common source of confusion
 
 When a user says "find my run called X", determine whether they mean:
-- **`run.name`** (display name): Non-unique, human-friendly. Search with `filters={"display_name": "X"}` or `{"display_name": {"$regex": ".*X.*"}}`.
+- **`run.name`** (display name): Non-unique, human-friendly. Exact: `filters={"display_name": "X"}`. Substring: `filters={"display_name": {"$contains": "X"}}` (indexed, fast). Avoid `{"$regex": ".*X.*"}` for plain substring search — it emits a non-indexable `REGEXP` server-side and scans every run in the project.
 - **`run.id`** (unique ID): The 8-char hash. Access directly with `api.run("entity/project/run_id")`.
 
 If the value looks like a short hash, it's probably an ID. If it's words or a descriptive string, it's a name.
@@ -201,7 +200,7 @@ Versioned data objects tracked as inputs/outputs of runs. Used for datasets, mod
 ### Common operations
 
 ```python
-api = wandb.Api(timeout=60)
+api = wandb.Api(timeout=120)
 
 # Fetch by name + version or alias
 artifact = api.artifact("entity/project/my-dataset:latest")
@@ -381,7 +380,9 @@ run.log_artifact(artifact)
 
 ## Weave Built-in Scorers
 
-Install with `pip install weave[scorers]`. LLM-based scorers use litellm under the hood.
+Use `weave[scorers]` when scorer helpers are available in the user's
+environment. Install optional scorer extras only if imports fail and the task
+requires them. LLM-based scorers use litellm under the hood.
 
 | Scorer | What it checks | Type |
 |--------|---------------|------|
