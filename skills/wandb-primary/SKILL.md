@@ -821,8 +821,8 @@ for c in calls:
 
 ### Create a W&B Report
 
-Use `wandb-workspaces` for programmatic report definitions. For the expanded
-v2 reference, see `references/REPORTS_WORKSPACES_V2.md`.
+Use `wandb-workspaces` for programmatic report definitions. For runset filters,
+panels, loading, and sharing, see `references/REPORTS.md`.
 
 ```python
 import os
@@ -1122,7 +1122,7 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 | Extract eval results for analysis | **`weave_helpers.eval_results_to_dicts()`** |
 | Count traces without fetching them | **`calls_query_stats`** from Weave server API |
 | Need low-level Weave filtering (CallsFilter, Query) | **Raw Weave SDK** — see `references/WEAVE_SDK.md` |
-| Create a report | **`wandb-workspaces`** (`wandb_workspaces.reports.v2`) — see `references/REPORTS_WORKSPACES_V2.md` |
+| Create a report | **`wandb-workspaces`** (`wandb_workspaces.reports.v2`) — see `references/REPORTS.md` |
 | Set up production monitoring | **`weave.Monitor`** |
 | Create / tag / classify / flag patterns in Weave traces | **Signal builder** with `signal_helpers.py` — see "Building Weave signals" |
 | Reproduce/relaunch a run | **`launch_helpers.relaunch_run()`** or CLI |
@@ -1404,7 +1404,7 @@ report.save(draft=True)
 ```
 
 For structured filters, media panels, run visibility, column controls, loading
-existing reports, and share links, see `references/REPORTS_WORKSPACES_V2.md`.
+existing reports, and share links, see `references/REPORTS.md`.
 
 ---
 
