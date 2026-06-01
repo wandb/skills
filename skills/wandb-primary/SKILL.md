@@ -821,9 +821,13 @@ for c in calls:
 
 ### Create a W&B Report
 
+Use `wandb-workspaces` for programmatic report definitions. For the expanded
+v2 reference, see `references/REPORTS_WORKSPACES_V2.md`.
+
 ```python
-import wandb, os
-from wandb.apis import reports as wr
+import os
+
+import wandb_workspaces.reports.v2 as wr
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -844,8 +848,8 @@ report = wr.Report(
     description="Auto-generated summary",
     width="fixed",
     blocks=[
-        wr.H1(text="Project Analysis"),
-        wr.P(text="Auto-generated summary from W&B API."),
+        wr.H1("Project Analysis"),
+        wr.P("Auto-generated summary from W&B API."),
         plots,
     ],
 )
@@ -1118,7 +1122,7 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 | Extract eval results for analysis | **`weave_helpers.eval_results_to_dicts()`** |
 | Count traces without fetching them | **`calls_query_stats`** from Weave server API |
 | Need low-level Weave filtering (CallsFilter, Query) | **Raw Weave SDK** — see `references/WEAVE_SDK.md` |
-| Create a report | **`wandb.apis.reports`** |
+| Create a report | **`wandb-workspaces`** (`wandb_workspaces.reports.v2`) — see `references/REPORTS_WORKSPACES_V2.md` |
 | Set up production monitoring | **`weave.Monitor`** |
 | Create / tag / classify / flag patterns in Weave traces | **Signal builder** with `signal_helpers.py` — see "Building Weave signals" |
 | Reproduce/relaunch a run | **`launch_helpers.relaunch_run()`** or CLI |
@@ -1374,7 +1378,7 @@ print(f"Tokens: {usage['total_tokens']} (in={usage['input_tokens']}, out={usage[
 ### Report authoring (W&B Reports)
 
 ```python
-from wandb.apis import reports as wr
+import wandb_workspaces.reports.v2 as wr
 
 runset = wr.Runset(entity=entity, project=project, name="All runs")
 plots = wr.PanelGrid(
@@ -1391,13 +1395,16 @@ report = wr.Report(
     description="Summary of recent runs",
     width="fixed",
     blocks=[
-        wr.H1(text="Project analysis"),
-        wr.P(text="Auto-generated summary from W&B API."),
+        wr.H1("Project analysis"),
+        wr.P("Auto-generated summary from W&B API."),
         plots,
     ],
 )
 report.save(draft=True)
 ```
+
+For structured filters, media panels, run visibility, column controls, loading
+existing reports, and share links, see `references/REPORTS_WORKSPACES_V2.md`.
 
 ---
 
