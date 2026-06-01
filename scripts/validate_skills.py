@@ -22,6 +22,11 @@ SECRET_PATTERNS = (
     re.compile(r"(weave-improver1|rollout|ruler_score_group)"),
 )
 
+STALE_REPORT_PATTERNS = (
+    re.compile(r"from\s+wandb\.apis\s+import\s+reports"),
+    re.compile(r"\bwandb\.apis\.reports\b"),
+)
+
 
 def _frontmatter(path: Path) -> dict[str, str]:
     text = path.read_text(encoding="utf-8")
@@ -42,7 +47,9 @@ def main() -> int:
     skills_root = root / "skills"
     offenders: list[str] = []
 
-    actual_skills = {path.name for path in skills_root.iterdir() if path.is_dir()}
+    actual_skills = {
+        path.name for path in skills_root.iterdir() if path.is_dir()
+    }
     if actual_skills != EXPECTED_SKILLS:
         offenders.append(
             f"skills set mismatch: expected {sorted(EXPECTED_SKILLS)}, "
@@ -67,7 +74,9 @@ def main() -> int:
 
     for path in skills_root.rglob("*"):
         if path.name == "__pycache__" or path.suffix == ".pyc":
-            offenders.append(f"{path.relative_to(root)}: generated Python cache")
+            offenders.append(
+                f"{path.relative_to(root)}: generated Python cache"
+            )
             continue
         if not path.is_file():
             continue
@@ -77,6 +86,12 @@ def main() -> int:
                 if pattern.search(text):
                     offenders.append(
                         f"{path.relative_to(root)}: matched {pattern.pattern}"
+                    )
+            for pattern in STALE_REPORT_PATTERNS:
+                if pattern.search(text):
+                    offenders.append(
+                        f"{path.relative_to(root)}: stale report API "
+                        f"{pattern.pattern}"
                     )
         if path.suffix == ".py":
             try:
