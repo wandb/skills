@@ -117,11 +117,27 @@ runset = wr.Runset(
 
 ## Tags and recent runs
 
+For tag filters, use structured `ws.Tags()` filters. Do not generate string
+filters for tags. In particular, do not write string filters that put one tag in
+parentheses, because that can be parsed as a parenthesized string instead of a
+collection. For a single dynamic tag, always wrap the value in a list:
+`ws.Tags().isin([dataset])`.
+
 ```python
+variants = ["baseline", "candidate"]
+dataset = "eval-set-a"
+exclude_tags = ["apa", "manual-review"]
+
 tagged = wr.Runset(
     entity=entity,
     project=project,
-    filters=[ws.Tags().isin(["production", "release"])],
+    name=f"Runs on {dataset}",
+    filters=[
+        ws.Tags().isin(variants),
+        ws.Tags().isin([dataset]),
+        ws.Tags().notin(exclude_tags),
+        ws.Metric("State") == "finished",
+    ],
 )
 
 recent = wr.Runset(
