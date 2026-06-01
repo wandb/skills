@@ -206,7 +206,9 @@ panels = [
 ```
 
 For media, use `wr.Image` for URL-backed static image blocks and
-`wr.MediaBrowser` for media logged to runs.
+`wr.MediaBrowser` for media logged to runs. Use `gallery_axis` for gallery
+views and `grid_x_axis` / `grid_y_axis` for grid views. If you configure both
+gallery and grid axes, set `mode` explicitly.
 
 ```python
 blocks = [
@@ -214,9 +216,30 @@ blocks = [
     wr.PanelGrid(
         panels=[
             wr.MediaBrowser(
+                title="Gallery by step",
+                media_keys=["train_image"],
+                gallery_axis="step",
+            ),
+        ],
+    ),
+    wr.PanelGrid(
+        panels=[
+            wr.MediaBrowser(
                 title="Validation samples",
                 media_keys=["val_image"],
                 grid_x_axis="index",
+                grid_y_axis="run",
+            ),
+        ],
+    ),
+    wr.PanelGrid(
+        panels=[
+            wr.MediaBrowser(
+                title="Grid mode with prepared gallery axis",
+                media_keys=["image"],
+                mode="grid",
+                gallery_axis="step",
+                grid_x_axis="step",
                 grid_y_axis="run",
             ),
         ],
