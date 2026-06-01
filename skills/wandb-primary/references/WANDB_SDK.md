@@ -17,10 +17,10 @@ import wandb
 import pandas as pd
 import numpy as np
 
-# ALWAYS use timeout=60 (or higher) for large projects.
+# ALWAYS use timeout=120 (or higher) for large projects.
 # The default 19s timeout causes constant failures on projects with 10K+ runs
 # or runs with 1K+ summary metrics.
-api = wandb.Api(timeout=60)
+api = wandb.Api(timeout=120)
 
 import os
 entity = os.environ["WANDB_ENTITY"]
@@ -56,8 +56,11 @@ runs = api.runs(path, filters={"config.learning_rate": {"$lt": 0.01}})
 runs = api.runs(path, filters={"summary_metrics.accuracy": {"$gt": 0.9}})
 runs = api.runs(path, filters={"summary_metrics.loss": {"$lt": 0.5}})
 
-# By display name (regex)
-runs = api.runs(path, filters={"display_name": {"$regex": ".*v2.*"}})
+# By display name — substring match (PREFERRED, uses the (project_id, display_name) index)
+runs = api.runs(path, filters={"display_name": {"$contains": "v2"}})
+
+# By display name — exact match
+runs = api.runs(path, filters={"display_name": "exact-name-here"})
 
 # By tags
 runs = api.runs(path, filters={"tags": {"$in": ["production"]}})
@@ -86,7 +89,9 @@ runs = api.runs(path, filters={
 
 ### Filter operators
 
-`$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$exists`, `$regex`, `$and`, `$or`, `$nor`
+`$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$nin`, `$exists`, `$contains`, `$regex`, `$and`, `$or`, `$nor`
+
+**Prefer `$contains` over `$regex` for string fields.** The server rewrites `$contains` to an indexed `LIKE` predicate; `$regex` always emits a non-indexable `REGEXP` and forces a full scan of the project's rows (often 10K+ rows examined to return one). Reach for `$regex` only when you need true regex semantics — alternation (`a|b`), character classes, anchors, quantifiers — that `$contains` can't express.
 
 ### Filterable fields
 
@@ -509,7 +514,7 @@ for p in projects[:20]:
 
 | Gotcha | Wrong | Right |
 |--------|-------|-------|
-| API timeout | `wandb.Api()` (19s default) | `wandb.Api(timeout=60)` |
+| API timeout | `wandb.Api()` (19s default) | `wandb.Api(timeout=120)` |
 | Summary access | `run.summary["loss"]` | `run.summary_metrics.get("loss")` |
 | Loading all runs | `list(api.runs(...))` | `runs[:200]` (always slice) |
 | Counting runs | `len(runs)` on large project (5s+) | Just `runs[:N]` |
@@ -531,7 +536,7 @@ for p in projects[:20]:
 ```python
 from wandb_helpers import get_api, scan_history
 
-api = get_api()  # timeout=60
+api = get_api()  # timeout=120
 path = f"{entity}/{project}"
 
 # Find best run by loss (server-side sort — no client iteration)
