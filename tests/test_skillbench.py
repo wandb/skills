@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from skillbench import candidate, rows, targets, wbaf_eval
+from skillbench import candidate, summary_rows, targets, wbaf_eval
 
 
 class SkillBenchTests(unittest.TestCase):
@@ -71,17 +71,39 @@ class SkillBenchTests(unittest.TestCase):
             )
             self.assertIn("skills/demo/SKILL.md", bundle.system_prompt_append)
 
-    def test_parse_bench_results(self) -> None:
-        parsed = rows.parse_bench_results(
-            "noise\n<<BENCH-RESULTS>>\n"
-            '{"rows":[{"task_id":"t","scorer_id":"s","score":1}],'
-            '"meta":{"agent":"a"}}\n'
-            "<</BENCH-RESULTS>>\n"
+    def test_rows_from_wbaf_summary(self) -> None:
+        rows = summary_rows.rows_from_summary(
+            {
+                "scenario_breakdown": {
+                    "smoke": {
+                        "task_breakdown": {
+                            "task/a": {
+                                "score": 1.0,
+                                "passed": True,
+                                "must_pass": True,
+                                "weight": 2.0,
+                                "trial_data": [
+                                    {
+                                        "scores": {
+                                            "rubric": {
+                                                "score": 0.75,
+                                                "passed": True,
+                                            }
+                                        }
+                                    }
+                                ],
+                            }
+                        }
+                    }
+                }
+            }
         )
 
-        self.assertTrue(parsed.present)
-        self.assertEqual(parsed.rows[0]["task_id"], "t")
-        self.assertEqual(parsed.meta["agent"], "a")
+        by_scorer = {row["scorer_id"]: row for row in rows}
+        self.assertEqual(by_scorer["__task__"]["task_id"], "task/a")
+        self.assertEqual(by_scorer["__task__"]["score"], 1.0)
+        self.assertEqual(by_scorer["rubric"]["score"], 0.75)
+        self.assertTrue(by_scorer["rubric"]["pass"])
 
     def test_wbaf_command_uses_bundle_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -109,11 +131,14 @@ class SkillBenchTests(unittest.TestCase):
                     target=target,
                     bundle=bundle,
                     select=targets.SelectSpec(scenarios=("smoke",)),
+                    output_path=root / "out.json",
                 )
             )
 
             self.assertIn("--agent.bundled_files", command)
             self.assertIn("--agent.system_prompt_append", command)
+            self.assertIn("--include-task-breakdown", command)
+            self.assertIn("--output", command)
             self.assertIn("--scenario", command)
             self.assertNotIn("data/skills", " ".join(command))
 

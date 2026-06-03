@@ -42,6 +42,7 @@ def _display_command(command: list[str]) -> str:
     replacements = {
         "--agent.bundled_files": "<bundled-files-json>",
         "--agent.system_prompt_append": "<skillbench-public-skill-prompt>",
+        "--output": "<output-json-path>",
     }
     for item in command:
         if skip_next:

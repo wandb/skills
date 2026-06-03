@@ -82,11 +82,13 @@ def _build_plan(
         skill=args.skill,
         output_dir=Path(args.workdir) / bundle_label,
     )
+    output_path = (Path(args.output_dir) / f"{bundle_label}.wbaf-output.json").resolve()
     plan = wbaf_eval.EvalPlan(
         wbaf_root=Path(args.wbaf_root),
         target=target,
         bundle=bundle,
         select=select,
+        output_path=output_path,
         scorer_parallelism=args.scorer_parallelism,
     )
     return plan, wbaf_eval.build_command(plan)
@@ -147,12 +149,12 @@ def cmd_run(args: argparse.Namespace) -> int:
         candidate_run.stderr,
         encoding="utf-8",
     )
-    missing_results: list[str] = []
-    if not base_run.bench_results.present:
-        missing_results.append("base")
-    if not candidate_run.bench_results.present:
-        missing_results.append("candidate")
-    if missing_results:
+    missing_outputs: list[str] = []
+    if base_run.output is None or not base_run.rows:
+        missing_outputs.append("base")
+    if candidate_run.output is None or not candidate_run.rows:
+        missing_outputs.append("candidate")
+    if missing_outputs:
         artifacts.write_json(
             output_dir / "manifest.lock.json",
             {
@@ -162,11 +164,11 @@ def cmd_run(args: argparse.Namespace) -> int:
                 "command": command,
                 "base_return_code": base_run.return_code,
                 "candidate_return_code": candidate_run.return_code,
-                "missing_bench_results": missing_results,
+                "missing_output_rows": missing_outputs,
             },
         )
         print(
-            "Missing <<BENCH-RESULTS>> from: " + ", ".join(missing_results),
+            "Missing WBAF output rows from: " + ", ".join(missing_outputs),
             file=sys.stderr,
         )
         return 1
@@ -176,8 +178,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         candidate_ref=args.candidate_ref,
         suite=candidate_plan.target.suite,
         agent=candidate_plan.target.agent,
-        base_rows=base_run.bench_results.rows,
-        candidate_rows=candidate_run.bench_results.rows,
+        base_rows=base_run.rows,
+        candidate_rows=candidate_run.rows,
     )
     gate = gates.evaluate(comparison)
     markdown = report.render_comparison(comparison, gate)
@@ -191,6 +193,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             "base_ref": args.base_ref,
             "candidate_ref": args.candidate_ref,
             "command": command,
+            "base_output_json": str(base_plan.output_path),
+            "candidate_output_json": str(candidate_plan.output_path),
             "base_return_code": base_run.return_code,
             "candidate_return_code": candidate_run.return_code,
         },

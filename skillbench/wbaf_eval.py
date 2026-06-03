@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .candidate import CandidateBundle
-from .rows import BenchResults, parse_bench_results
+from .summary_rows import WbafOutput, load_output_json, rows_from_summary
 from .targets import BenchTarget, SelectSpec
 
 
@@ -21,6 +21,7 @@ class EvalPlan:
     target: BenchTarget
     bundle: CandidateBundle
     select: SelectSpec
+    output_path: Path
     runner_type: str = "ci"
     scorer_parallelism: int | None = None
 
@@ -33,7 +34,8 @@ class EvalRun:
     return_code: int
     stdout: str
     stderr: str
-    bench_results: BenchResults
+    output: WbafOutput | None
+    rows: tuple[dict, ...]
 
 
 def build_command(plan: EvalPlan) -> list[str]:
@@ -55,6 +57,9 @@ def build_command(plan: EvalPlan) -> list[str]:
         plan.bundle.system_prompt_append,
         "--runner.type",
         plan.runner_type,
+        "--include-task-breakdown",
+        "--output",
+        str(plan.output_path),
     ]
     for scenario in plan.select.scenarios:
         command.extend(["--scenario", scenario])
@@ -83,8 +88,9 @@ def _env_with_file(env_file: Path | None) -> dict[str, str]:
 
 
 def run(plan: EvalPlan, *, env_file: Path | None = None, timeout_seconds: int | None = None) -> EvalRun:
-    """Execute WBAF and parse bench rows from stdout."""
+    """Execute WBAF and parse rows from its generic output JSON."""
     command = build_command(plan)
+    plan.output_path.parent.mkdir(parents=True, exist_ok=True)
     completed = subprocess.run(
         command,
         cwd=plan.wbaf_root,
@@ -94,10 +100,13 @@ def run(plan: EvalPlan, *, env_file: Path | None = None, timeout_seconds: int | 
         check=False,
         timeout=timeout_seconds or plan.target.timeout_seconds,
     )
+    output = load_output_json(plan.output_path) if plan.output_path.exists() else None
+    parsed_rows = rows_from_summary(output.summary) if output else ()
     return EvalRun(
         command=tuple(command),
         return_code=completed.returncode,
         stdout=completed.stdout,
         stderr=completed.stderr,
-        bench_results=parse_bench_results(completed.stdout),
+        output=output,
+        rows=parsed_rows,
     )
