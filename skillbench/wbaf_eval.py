@@ -22,6 +22,7 @@ class EvalPlan:
     bundle: CandidateBundle
     select: SelectSpec
     output_path: Path
+    adapter: str = "public-skill"
     runner_type: str = "ci"
     scorer_parallelism: int | None = None
 
@@ -39,7 +40,37 @@ class EvalRun:
 
 
 def build_command(plan: EvalPlan) -> list[str]:
-    """Build a `factory.run_eval` command without executing it."""
+    """Build a WBAF command without executing it."""
+    if plan.adapter == "direct-run-eval":
+        return _build_direct_run_eval_command(plan)
+    command = [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "factory.public_skill_eval",
+        "--suite",
+        plan.target.suite,
+        "--agent",
+        plan.target.agent,
+        "--skill-name",
+        plan.bundle.skill,
+        "--skill-dir",
+        str(plan.bundle.bundle_dir),
+        "--runner.type",
+        plan.runner_type,
+        "--output",
+        str(plan.output_path),
+    ]
+    for scenario in plan.select.scenarios:
+        command.extend(["--scenario", scenario])
+    if plan.scorer_parallelism is not None:
+        command.extend(["--scorer-parallelism", str(plan.scorer_parallelism)])
+    return command
+
+
+def _build_direct_run_eval_command(plan: EvalPlan) -> list[str]:
+    """Build a direct `factory.run_eval` command for debug canaries."""
     command = [
         "uv",
         "run",

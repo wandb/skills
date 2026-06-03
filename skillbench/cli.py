@@ -89,6 +89,7 @@ def _build_plan(
         bundle=bundle,
         select=select,
         output_path=output_path,
+        adapter=args.adapter,
         scorer_parallelism=args.scorer_parallelism,
     )
     return plan, wbaf_eval.build_command(plan)
@@ -228,6 +229,12 @@ def _add_common_bench_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--profile", default="smoke")
     parser.add_argument("--workdir", default=str(DEFAULT_WORKDIR))
     parser.add_argument("--output-dir", default=str(DEFAULT_WORKDIR / "artifacts"))
+    parser.add_argument(
+        "--adapter",
+        choices=("public-skill", "direct-run-eval"),
+        default="public-skill",
+        help="WBAF runtime adapter to invoke.",
+    )
     parser.add_argument("--scorer-parallelism", type=int, default=None)
 
 

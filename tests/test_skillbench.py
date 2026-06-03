@@ -105,7 +105,7 @@ class SkillBenchTests(unittest.TestCase):
         self.assertEqual(by_scorer["rubric"]["score"], 0.75)
         self.assertTrue(by_scorer["rubric"]["pass"])
 
-    def test_wbaf_command_uses_bundle_overrides(self) -> None:
+    def test_wbaf_command_uses_public_skill_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             skill_dir = root / "repo" / "skills" / "demo"
@@ -135,9 +135,10 @@ class SkillBenchTests(unittest.TestCase):
                 )
             )
 
-            self.assertIn("--agent.bundled_files", command)
-            self.assertIn("--agent.system_prompt_append", command)
-            self.assertIn("--include-task-breakdown", command)
+            self.assertNotIn("--agent.bundled_files", command)
+            self.assertIn("factory.public_skill_eval", command)
+            self.assertIn("--skill-dir", command)
+            self.assertIn(str(bundle.bundle_dir), command)
             self.assertIn("--output", command)
             self.assertIn("--scenario", command)
             self.assertNotIn("data/skills", " ".join(command))
