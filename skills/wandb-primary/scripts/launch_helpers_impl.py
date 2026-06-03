@@ -30,7 +30,7 @@ import wandb
 from wandb.sdk.launch._launch_add import launch_add
 from wandb.sdk.launch.create_job import _create_job
 
-DEFAULT_BASE_IMAGE = "wandb/autoresearch-base:latest"
+DEFAULT_BASE_IMAGE = "python:3.11-slim"
 ACTIVE_AGENT_STATUSES = {"POLLING", "RUNNING"}
 TERMINAL_RUN_STATES = {"finished", "failed", "crashed", "killed"}
 WAIT_FOR_MODES = {"queued", "launched", "done"}
@@ -254,10 +254,10 @@ def list_queues(entity):
     # Print
     if not queues:
         print(f"  No queues found for entity '{entity}'")
-        print("  Suggested Kubernetes queue name: autoresearch-k8s")
+        print("  Suggested Kubernetes queue name: wandb-launch-k8s")
         print(
             "  Create one with: python skills/wandb-primary/scripts/launch_helpers.py "
-            f"create-queue {entity} --queue autoresearch-k8s --namespace wandb-launch"
+            f"create-queue {entity} --queue wandb-launch-k8s --namespace wandb-launch"
         )
         return queues
 
@@ -582,7 +582,7 @@ def submit_code_artifact_job(
         queue_name: Launch queue name. Run list_queues(entity) first.
         namespace: K8s namespace. Only needed when overriding resources.
         job_name: Name for the job artifact.
-        base_image: Docker base image. Defaults to wandb/autoresearch-base:latest.
+        base_image: Docker base image. Defaults to python:3.11-slim.
         requirements: List of pip packages to install in the container.
                       Only include packages NOT already in the base image.
                       _create_job reads requirements.txt directly — it does NOT inspect the venv.
@@ -664,7 +664,7 @@ def inspect_job_artifact(artifact_path):
     Download and inspect a job artifact's metadata.
 
     Args:
-        artifact_path: Full artifact path, e.g. "wandb/autoresearch/autoresearch-train:v6"
+        artifact_path: Full artifact path, e.g. "ENTITY/PROJECT/JOB_NAME:latest"
 
     Returns:
         Dict with keys: entrypoint, base_image, source_artifact, runtime, requirements
@@ -822,7 +822,7 @@ def create_and_launch_modified_job(
         queue_name: Launch queue name. Run list_queues(entity) first.
         namespace: K8s namespace. Only needed when overriding resources.
         job_name: Name for the job artifact.
-        base_image: Docker base image. Defaults to wandb/autoresearch-base:latest.
+        base_image: Docker base image. Defaults to python:3.11-slim.
         requirements: List of pip packages (only those NOT in base image).
         ensure_wandb: Add wandb to requirements.txt when missing.
         config: Dict of run config overrides.
@@ -906,7 +906,7 @@ def launch_job_artifact(
     Launch a job directly from an artifact path.
 
     Args:
-        artifact_path: Full artifact path, e.g. "wandb/autoresearch/autoresearch-train:v6"
+        artifact_path: Full artifact path, e.g. "ENTITY/PROJECT/JOB_NAME:latest"
         queue_name: Launch queue to submit to. Run list_queues(entity) first.
         namespace: K8s namespace. Only needed when overriding resources.
         entrypoint: Override entrypoint. If None, uses the artifact's entrypoint.
@@ -920,7 +920,7 @@ def launch_job_artifact(
     Returns:
         Status dict with queue item, run URL, run state, launched, and done.
     """
-    # Parse entity/project from artifact path (e.g. "wandb/autoresearch/job-name:v6")
+    # Parse entity/project from artifact path (e.g. "ENTITY/PROJECT/JOB_NAME:latest")
     parts = artifact_path.split("/")
     entity = parts[0]
     project = parts[1]
@@ -1448,7 +1448,7 @@ def _cli():
 
     Usage:
         python launch_helpers.py list-queues <entity>
-        python launch_helpers.py create-queue <entity> --queue autoresearch-k8s --namespace <namespace>
+        python launch_helpers.py create-queue <entity> --queue wandb-launch-k8s --namespace <namespace>
         python launch_helpers.py relaunch <run_url> --queue <queue> [--config '{"epochs": 100}']
         python launch_helpers.py inspect <run_url>
     """
@@ -1474,7 +1474,7 @@ def _cli():
 
     p_cq = sub.add_parser("create-queue", help="Create a Kubernetes launch queue")
     p_cq.add_argument("entity", help="W&B entity name")
-    p_cq.add_argument("--queue", default="autoresearch-k8s", help="Queue name")
+    p_cq.add_argument("--queue", default="wandb-launch-k8s", help="Queue name")
     p_cq.add_argument("--namespace", default="wandb-launch", help="Kubernetes namespace")
     p_cq.add_argument("--gpus", type=int, default=1, help="GPUs per job")
     p_cq.add_argument("--cpu", type=int, default=8, help="CPUs per job")

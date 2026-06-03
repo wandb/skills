@@ -879,17 +879,16 @@ Every Launch entrypoint you create must call `wandb.init(...)`, log at least one
 metric, and finish the run. The helpers add `wandb` to `requirements.txt` when
 it is missing.
 
-For new code jobs, use `wandb/autoresearch-base:latest` when the user did not
-specify an image. The helpers default to it. It is a CUDA 12.8/cuDNN Ubuntu
-22.04 image with Python 3.10, PyTorch 2.9.1 for CUDA 12.8, `wandb`, `pyyaml`,
-and common research/data packages including `numpy`, `pandas`, `pyarrow`,
-`matplotlib`, `requests`, `tiktoken`, `rustbpe`, and `kernels`; it also has the
-autoresearch training data/tokenizer assets baked in.
+For new code jobs, use `python:3.11-slim` when the user did not
+specify an image. The helpers default to it and add `wandb` to
+`requirements.txt` when needed. If the job needs CUDA, PyTorch, or other
+framework-specific dependencies, ask for or choose a suitable base image before
+submitting the Launch job.
 
 Launch setup from scratch defaults to Kubernetes. If the user asks how to set up
-Launch for autoresearch and queues do not exist, do not list SageMaker, Vertex,
-Slurm, or other cloud/HPC backends. Say that this agent can help set up a
-Kubernetes Launch queue and agent.
+Launch and queues do not exist, say that this agent can help set up a
+Kubernetes Launch queue and agent. Mention other backends only if the user asks
+for them or has an existing non-Kubernetes environment.
 
 Local Docker is acceptable when the user explicitly wants to use their local GPU
 or local machine. In that case, offer a Local Docker Launch queue instead of a
@@ -902,7 +901,7 @@ receives it as `WANDB_API_KEY`:
 wandb launch-agent --queue QUEUE --entity ENTITY  # requires WANDB_API_KEY in the environment
 ```
 
-For a missing Kubernetes queue, offer to create `autoresearch-k8s` unless the
+For a missing Kubernetes queue, offer to create `wandb-launch-k8s` unless the
 user names a queue. Use defaults `namespace="wandb-launch"`, `gpus=1`, `cpu=8`,
 `memory="80Gi"` and ask only for the W&B entity if it is not inferable. Use
 `wandb-launch` unless the user explicitly gives a different namespace. Queue
@@ -911,7 +910,7 @@ defaults should include namespace and resource requests only; do not put
 
 ```bash
 python skills/wandb-primary/scripts/launch_helpers.py create-queue ENTITY \
-  --queue autoresearch-k8s \
+  --queue wandb-launch-k8s \
   --namespace wandb-launch \
   --gpus 1 --cpu 8 --memory 80Gi
 ```
@@ -935,7 +934,7 @@ helm upgrade --install wandb-launch launch-agent \
   --set-file launchConfig=<(cat <<YAML
 entity: ${WANDB_ENTITY}
 queues:
-  - autoresearch-k8s
+  - wandb-launch-k8s
 max_jobs: 10
 builder:
   type: noop
@@ -966,7 +965,7 @@ you pass `gpus=`, `cpu=`, or `memory=`.
 
 Default launch behavior: wait only until Launch assigns a W&B run ID, then tell
 the user the run URL and queue item ID. Do not wait for completion unless the
-user explicitly asks, or the task is an autoresearch-style loop where you must
+user explicitly asks, or the task is a serial experiment loop where you must
 inspect one run before launching the next. For that case pass `wait_for="done"`;
 otherwise leave the default `wait_for="launched"`.
 Launch helpers return a status dict with `queue_item_id`, `run_url`, `run_id`,
