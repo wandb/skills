@@ -1,0 +1,71 @@
+name: Skill Bench plan
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - "bench/**"
+      - "skillbench/**"
+      - "tests/**"
+      - ".github/workflows/skillbench-plan.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Skill Bench unit tests
+        run: python -m unittest discover tests -v
+
+      - name: Detect changed skills
+        id: detect
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python -m skillbench.cli detect-changed-skills \
+            --base-ref "$BASE_REF" \
+            --candidate-ref "$HEAD_REF" \
+            --output .tmp/skillbench/changed-skills.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = json.loads(Path(".tmp/skillbench/changed-skills.json").read_text())
+          skills = payload.get("skills") or []
+          print(f"skills={','.join(skills)}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"skills={','.join(skills)}\n")
+              handle.write(f"has_skills={'true' if skills else 'false'}\n")
+          PY
+
+      - name: Plan WBAF command
+        if: steps.detect.outputs.has_skills == 'true'
+        env:
+          SKILLS: ${{ steps.detect.outputs.skills }}
+        run: |
+          SKILL="${SKILLS%%,*}"
+          python -m skillbench.cli plan \
+            --wbaf-root "$GITHUB_WORKSPACE/WandBAgentFactory" \
+            --candidate-ref "${{ github.event.pull_request.head.sha }}" \
+            --skill "$SKILL" \
+            --output-dir .tmp/skillbench/plan
+          cat .tmp/skillbench/plan/scorecard.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload plan artifacts
+        if: steps.detect.outputs.has_skills == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillbench-plan
+          path: .tmp/skillbench/

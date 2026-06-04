@@ -1,0 +1,45 @@
+[defaults]
+suite = "data/evals/harness-smoke.yaml"
+agent = "claude-code-public-skill"
+timeout_seconds = 1800
+
+[[skills]]
+publish_name = "wandb-primary"
+suite = "data/evals/wba-all.yaml"
+agent = "claude-code-public-skill"
+timeout_seconds = 1800
+scenarios = [
+  "artifact-lookup",
+  "eval-analysis",
+  "product-understanding",
+  "project-overview",
+  "trace-counting",
+  "run-analysis",
+  "run-counting",
+  "run-lookup",
+  "signal-builder",
+  "weave-lookup",
+]
+levels = ["L1"]
+mode = "intersect"
+
+[profiles.smoke]
+description = "Fast maintainer-triggered PR smoke profile."
+levels = ["L1"]
+trials = 1
+mode = "intersect"
+
+[profiles.canary]
+description = "Tiny E2E validation profile for proving the WBAF runtime seam."
+suite = "data/evals/harness-smoke.yaml"
+agent = "claude-code-public-skill"
+timeout_seconds = 900
+replace_select = true
+trials = 1
+mode = "intersect"
+
+[profiles.release]
+description = "Mainline badge/profile run for supported public skills."
+levels = ["L1"]
+trials = 1
+mode = "intersect"

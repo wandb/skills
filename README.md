@@ -10,13 +10,15 @@
 
 Skills to guide Claude Code, Codex, and other coding agents on using the [Weights & Biases](https://wandb.ai) AI developer platform to train models and build agents.
 
-### For model training
+## For model training
+
 - Log metrics and rich media during model training and fine-tuning
 - Track model training experiments
 - Analyze runs and experiment results to understand how the model is learning
 - Tune hyperparameters
 
-### For agent building
+## For agent building
+
 - Trace agentic AI applications
 - Analyze traces and classify them into failure modes
 - Evaluate models with labeled datasets
@@ -39,22 +41,37 @@ export WANDB_API_KEY=<your-key>
 ## Available Skills
 
 <!-- BEGIN SKILL TABLE -->
-| Skill | Description | Status |
-|-------|-------------|--------|
+| Skill                                    | Description                                                                                                                               | Status       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [`wandb-primary`](skills/wandb-primary/) | Primary W&B skill for broad, mixed-surface W&B project analysis and workflows across runs, Weave, Reports, Signal Builder, and Launch. | experimental |
 <!-- END SKILL TABLE -->
 
 ## Benchmarks
 
-We maintain a growing internal benchmark suite that evaluates each skill across coding agents and task categories. Skills are validated through the W&B Agent Factory benchmark harness.
+We maintain Skill Bench in this repository to evaluate public skill changes
+across coding agents and task categories. Skill Bench uses W&B Agent Factory as
+the eval runtime for task definitions, agent profiles, sandbox execution, and
+structured bench rows.
 
-| Category | Tasks | Claude Code (`sonnet4.6`) | Codex (`gpt-5.3-codex`) |
-|----------|-------|-------------|-------|
-| Weave analysis | 26 | 97%* | 63%* |
-| Weave tooling | 11 | 95%* | 83%* |
-| Model training | 8 | 90%* | 85%* |
-| LLM finetuning & RL analysis | 14 | 72%* | 86%* |
-| Failure & outlier detection | 8 | 86%* | 63%* |
+Pull requests run package validation by default. A maintainer can trigger live
+Skill Bench runs for larger changes.
+
+Plan a local benchmark without model calls:
+
+```bash
+python3 -m skillbench.cli plan \
+  --wbaf-root ../WandBAgentFactory \
+  --candidate-ref HEAD \
+  --skill wandb-primary
+```
+
+| Category                      | Tasks | Claude Code (`sonnet4.6`) | Codex (`gpt-5.3-codex`) |
+| ----------------------------- | ----- | ------------------------- | ----------------------- |
+| Weave analysis                | 26    | 97%*                      | 63%*                    |
+| Weave tooling                 | 11    | 95%*                      | 83%*                    |
+| Model training                | 8     | 90%*                      | 85%*                    |
+| LLM finetuning & RL analysis  | 14    | 72%*                      | 86%*                    |
+| Failure & outlier detection   | 8     | 86%*                      | 63%*                    |
 
 *Pass rates are +/- 3%. Many tasks span multiple categories.
 
