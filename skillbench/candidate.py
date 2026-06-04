@@ -41,14 +41,16 @@ ALLOWED_ROOTS = (
     "scripts/validate_skills.py",
     ".github/workflows/validate-skills.yaml",
     ".github/workflows/skillbench-plan.yaml",
-    ".github/workflows/skillbench-live.yaml",
-    ".github/workflows/skillbench-main.yaml",
     "README.md",
     "CONTRIBUTING.md",
 )
 
 
-def changed_files(repo_root: Path, base_ref: str, candidate_ref: str) -> tuple[str, ...]:
+def changed_files(
+    repo_root: Path,
+    base_ref: str,
+    candidate_ref: str,
+) -> tuple[str, ...]:
     """Return files changed between two git refs."""
     completed = subprocess.run(
         ["git", "diff", "--name-only", base_ref, candidate_ref],
@@ -59,7 +61,11 @@ def changed_files(repo_root: Path, base_ref: str, candidate_ref: str) -> tuple[s
     )
     if completed.returncode != 0:
         raise RuntimeError(completed.stderr or completed.stdout)
-    return tuple(line.strip() for line in completed.stdout.splitlines() if line.strip())
+    return tuple(
+        line.strip()
+        for line in completed.stdout.splitlines()
+        if line.strip()
+    )
 
 
 def detect_changed_skills(files: tuple[str, ...]) -> tuple[str, ...]:
@@ -77,7 +83,10 @@ def evaluate_path_policy(files: tuple[str, ...]) -> PathPolicyResult:
     blocked: list[str] = []
     script_changes: list[str] = []
     for path in files:
-        if not any(path == root or path.startswith(root) for root in ALLOWED_ROOTS):
+        if not any(
+            path == root or path.startswith(root)
+            for root in ALLOWED_ROOTS
+        ):
             blocked.append(path)
         parts = Path(path).parts
         if len(parts) >= 4 and parts[0] == "skills" and parts[2] == "scripts":

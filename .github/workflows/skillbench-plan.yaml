@@ -8,7 +8,6 @@ on:
       - "skillbench/**"
       - "tests/**"
       - ".github/workflows/skillbench-plan.yaml"
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -31,8 +30,8 @@ jobs:
       - name: Detect changed skills
         id: detect
         env:
-          BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
-          HEAD_REF: ${{ github.event.pull_request.head.sha || 'HEAD' }}
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha }}
         run: |
           python -m skillbench.cli detect-changed-skills \
             --base-ref "$BASE_REF" \
@@ -59,7 +58,7 @@ jobs:
           SKILL="${SKILLS%%,*}"
           python -m skillbench.cli plan \
             --wbaf-root "$GITHUB_WORKSPACE/WandBAgentFactory" \
-            --candidate-ref "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --candidate-ref "${{ github.event.pull_request.head.sha }}" \
             --skill "$SKILL" \
             --output-dir .tmp/skillbench/plan
           cat .tmp/skillbench/plan/scorecard.md >> "$GITHUB_STEP_SUMMARY"
