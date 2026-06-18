@@ -201,33 +201,15 @@ df = run.history(samples=2000, keys=["loss", "val_loss", "learning_rate"])
 ### `run.scan_history()` — full, unsampled, iterator
 
 ```python
-# ALWAYS pass keys= — same 502 risk as history() without keys
-losses = [row["loss"] for row in run.scan_history(keys=["loss"])]
-
-# Step range
-for row in run.scan_history(keys=["loss"], min_step=1000, max_step=2000):
-    print(row["_step"], row.get("loss"))
-
-# To DataFrame
-rows = list(run.scan_history(keys=["loss", "val_loss"], page_size=2000))
-df = pd.DataFrame(rows)
-```
-
-**Behavior**: Returns ALL logged rows, unsampled. Uses GraphQL pagination. Good for precision on runs with <10K steps.
-
-### `run.beta_scan_history()` — parquet-backed, fast for large histories
-
-```python
 # Downloads history from parquet files instead of GraphQL pagination.
-# Significantly faster for runs with 10K+ steps.
-# ALWAYS pass keys= to avoid downloading all columns.
+# Passing keys= avoids downloading all columns
 
 # Basic usage
-for row in run.beta_scan_history(keys=["loss"]):
+for row in run.scan_history(keys=["loss"]):
     print(row)
 
 # With step range and page size
-rows = list(run.beta_scan_history(
+rows = list(run.scan_history(
     keys=["loss", "val_loss"],
     min_step=0,
     max_step=10000,
@@ -236,12 +218,12 @@ rows = list(run.beta_scan_history(
 df = pd.DataFrame(rows)
 
 # With caching (default True — skips re-download)
-rows = list(run.beta_scan_history(keys=["loss"], use_cache=True))
+rows = list(run.scan_history(keys=["loss"], use_cache=True)))
 ```
 
-**Behavior**: Downloads parquet history files, then reads locally. First call downloads the file; subsequent calls with `use_cache=True` read from local cache. Faster than `scan_history()` for large runs (10K+ steps), but has download overhead for small runs.
+**Behavior**: Downloads parquet history files, then reads locally. First call downloads the file; subsequent calls with use_cache=True read from local cache.
 
-**WARNING**: `beta_scan_history()` without `keys=` downloads ALL metric columns in the parquet file. On runs with 20K metrics, this can take **300+ seconds**.
+WARNING: scan_history() without keys= downloads ALL metric columns in the parquet file. On runs with 20K metrics, this can take 300+ seconds.
 
 ### When to use which
 
@@ -249,9 +231,8 @@ rows = list(run.beta_scan_history(keys=["loss"], use_cache=True))
 |----------|--------|-----|
 | Quick plot / overview | `history(samples=500, keys=[...])` | Fast, sampled |
 | Dashboard summary | `history(samples=1000, keys=[...])` | Fast, sampled |
-| Exact values, <10K steps | `scan_history(keys=[...])` | Low overhead |
-| Exact values, 10K+ steps | `beta_scan_history(keys=[...])` | Parquet is faster |
-| Repeated reads of same run | `beta_scan_history(keys=[...], use_cache=True)` | Cached locally |
+| Exact values, any run size | `scan_history(keys=[...])` | Full iterator with fast exported-history path when available |
+| Repeated reads of same run | `scan_history(keys=[...])` | Reuses cached history |
 | System metrics (GPU/CPU) | `history(stream="system")` | Separate stream |
 | Step range query | `scan_history(keys=[...], min_step=N, max_step=M)` | Built-in range |
 
@@ -520,9 +501,8 @@ for p in projects[:20]:
 | Counting runs | `len(runs)` on large project (5s+) | Just `runs[:N]` |
 | Pagination | `api.runs(path)` (per_page=50 default) | `api.runs(path, per_page=min(N, 1000))` |
 | History — all fields | `run.history()` → **502** on 1K+ metrics | `run.history(samples=500, keys=["loss"])` |
-| scan_history — no keys | `scan_history()` → timeout | `scan_history(keys=["loss"])` (explicit) |
-| Large history (10K+ steps) | `scan_history(keys=[...])` (slow GraphQL) | `beta_scan_history(keys=[...])` (parquet) |
-| beta_scan — no keys | `beta_scan_history()` (300s+) | `beta_scan_history(keys=["loss"])` |
+| scan_history — no keys | `scan_history()` → slow to return data | `scan_history(keys=["loss"])` (explicitly provide keys) |
+| Large history (10K+ steps) | `history(samples=...)` for exact values | `scan_history(keys=["loss"])` |
 | Config iteration | `for k,v in run.config.items()` (slow) | `run.config.get("lr")` (specific keys) |
 | Raw data in context | `print(run.history())` | Load into DataFrame, compute stats |
 | Metric at step N | iterate history | `scan_history(keys=["loss"], min_step=N, max_step=N+1)` |

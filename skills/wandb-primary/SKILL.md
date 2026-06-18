@@ -1103,7 +1103,7 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 3. **Use `per_page=min(limit, 1000)`** when calling `api.runs()` for list tasks, and use `per_page=1` for exact count tasks
 4. **Prefer server-side filters** (`summary_metrics.X: {$gt: Y}`) over client-side iteration
 5. **For exact counts, prefer `len(api.runs(..., per_page=1, include_sweeps=False, lazy=True))`** — never `len(list(runs))`
-6. **Use `beta_scan_history`** for runs with 10K+ history steps — reads from parquet, not GraphQL
+6. **Use `scan_history(keys=[...])`** for exact history reads
 7. **Never iterate all config keys** unless explicitly needed — access specific keys by name
 8. **Default to `include_sweeps=False` for read-only retrieval tasks**
 9. **Use `calls_query_stats` for trace counts** — never materialize all calls just to count them
@@ -1158,7 +1158,7 @@ from wandb_helpers import (
     runs_to_dataframe,   # Legacy: iterate run objects (slower, use fetch_runs instead)
     diagnose_run,        # Quick diagnostic summary (configurable metric keys)
     compare_configs,     # Side-by-side config diff between two runs
-    scan_history,        # Smart history scan (auto-selects beta_scan_history for large runs)
+    scan_history,        # Exact history scan with explicit metric keys
 )
 
 # Launch helpers (job submission, run reproduction, queue management)
@@ -1439,7 +1439,6 @@ existing reports, and share links, see `references/REPORTS.md`.
 | System/GPU/CPU metrics | `run.history(keys=["system.gpu.0.gpu"])` → empty | `run.history(stream='system', samples=500)` GPU, CPU, memory, network, disk metrics live in a separate stream; the default stream returns training metrics only. Absence in the default stream is NOT proof the data doesn't exist. |
 | History — no keys on large run | `run.history(samples=10)` -> 502 | `run.history(samples=10, keys=["LOSS_KEY"])` |
 | scan_history — no keys | `scan_history()` -> timeout | `scan_history(keys=["LOSS_KEY"])` |
-| Large history (10K+ steps) | `scan_history(keys=[...])` | `beta_scan_history(keys=[...])` (parquet) |
 | Cross-run search | iterate all runs client-side | Server-side filter: `{"summary_metrics.X": {"$gt": Y}}` |
 
 ### Launch

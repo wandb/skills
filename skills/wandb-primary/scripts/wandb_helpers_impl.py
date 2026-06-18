@@ -13,9 +13,8 @@ Key features:
 - get_api: Uses timeout=120 to prevent timeouts on large projects
 - probe_project: Discovers project scale and available metrics
 - runs_to_dataframe: Selective config/metric access
-- diagnose_run: Configurable metric keys, uses beta_scan_history (parquet)
-  for large histories
-- scan_history: Auto-selects beta_scan_history for runs with 10K+ steps
+- diagnose_run: Configurable metric keys, uses scan_history
+- scan_history: Explicit-key history scan.
 - All history methods require explicit keys to avoid 502s on runs with
   thousands of metrics
 
@@ -28,7 +27,7 @@ Usage:
         runs_to_dataframe,   # Convert runs to a clean pandas DataFrame
         diagnose_run,        # Quick diagnostic summary of a training run
         compare_configs,     # Side-by-side config diff between two runs
-        scan_history,        # Smart history scan (beta_scan_history for large runs)
+        scan_history,        # Exact history scan with explicit metric keys
     )
 """
 
@@ -138,6 +137,7 @@ def probe_project(api: Any, path: str, sample_size: int = 3) -> dict[str, Any]:
     # Probe Weave traces for this project (optional — silently skipped if unavailable)
     try:
         import logging as _logging
+
         import weave as _weave  # local import — weave may not always be present
         from weave.trace_server.trace_server_interface import (
             CallsQueryStatsReq as _StatsReq,
@@ -179,13 +179,8 @@ def scan_history(
     run: Any,
     keys: list[str],
     max_rows: int | None = None,
-    use_beta: bool | None = None,
 ) -> list[dict[str, Any]]:
-    """Read history rows from a run, choosing the fastest available method.
-
-    Uses beta_scan_history (parquet-backed) for runs with large step counts
-    (10K+ steps) since it avoids GraphQL pagination. Falls back to
-    scan_history for smaller runs where parquet download overhead isn't worth it.
+    """Read exact history rows from a run with explicit metric keys.
 
     IMPORTANT: keys is required. Never call without explicit keys on large
     projects — runs with 1K+ metrics will 502 or timeout without key filtering.
@@ -194,8 +189,6 @@ def scan_history(
         run: A W&B Run object.
         keys: Metric keys to fetch. REQUIRED.
         max_rows: Stop after this many rows. None = all rows.
-        use_beta: Force beta_scan_history (True), force regular (False),
-                  or auto-detect (None, default).
 
     Returns:
         List of dicts with the requested keys + _step.
@@ -205,18 +198,8 @@ def scan_history(
             "keys is required — never scan without explicit keys on large projects"
         )
 
-    # Auto-detect: use beta for runs with 10K+ steps
-    if use_beta is None:
-        total_steps = getattr(run, "lastHistoryStep", -1)
-        use_beta = total_steps >= 10_000
-
     rows = []
-    if use_beta and hasattr(run, "beta_scan_history"):
-        scanner = run.beta_scan_history(
-            keys=keys, page_size=min(max_rows or 10_000, 10_000)
-        )
-    else:
-        scanner = run.scan_history(keys=keys)
+    scanner = run.scan_history(keys=keys, page_size=min(max_rows or 10_000, 10_000))
 
     for row in scanner:
         rows.append(dict(row))
@@ -447,7 +430,7 @@ def diagnose_run(
     """Quick diagnostic summary of a training run.
 
     Checks for convergence, overfitting, NaN values, and other common
-    training issues. Uses beta_scan_history for runs with large step counts.
+    training issues. Uses scan_history with explicit metric keys.
 
     Args:
         run: A W&B Run object from api.run().
