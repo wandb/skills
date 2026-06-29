@@ -22,6 +22,13 @@ from typing import Any
 DEFAULT_BASE_URL = "https://wb-agent.wandb.ai"
 TERMINAL_STATES = {"completed", "errored", "cancelled"}
 
+# Client attribution. The hosted API has no caller-settable client field
+# (`user_context` and unknown top-level keys are dropped server-side), so the
+# tag is carried two ways: a `client_info` prompt-part that persists on the
+# stored turn, and request headers for backends that read request metadata.
+DEFAULT_CLIENT = "coding_agent"
+CLIENT_PART_TYPE = "client_info"
+
 
 class ApiError(RuntimeError):
     def __init__(self, status: int | None, message: str):
@@ -63,6 +70,18 @@ def default_project() -> str | None:
     return env("WB_AGENT_PROJECT") or env("WANDB_PROJECT")
 
 
+def client_name(args: argparse.Namespace | None = None) -> str:
+    """Resolve the client attribution tag.
+
+    Precedence: explicit ``--client`` flag, then ``WB_AGENT_CLIENT``, then the
+    default. An empty value disables tagging (no marker, no header).
+    """
+    if args is not None and getattr(args, "client", None) is not None:
+        return args.client
+    value = os.environ.get("WB_AGENT_CLIENT")
+    return value if value is not None else DEFAULT_CLIENT
+
+
 def ssl_context(insecure: bool) -> ssl.SSLContext | None:
     if not base_url().startswith("https://"):
         return None
@@ -94,6 +113,10 @@ def request_json(
 
     data = None
     headers = {"Accept": "application/json"}
+    client = client_name()
+    if client:
+        headers["User-Agent"] = f"aria-chat-skill ({client})"
+        headers["X-Wandb-Client"] = client
     if body is not None:
         data = json.dumps(body, separators=(",", ":")).encode("utf-8")
         headers["Content-Type"] = "application/json"
@@ -176,8 +199,24 @@ def resolve_query_scope(args: argparse.Namespace) -> tuple[str | None, str | Non
     return entity, project
 
 
+def apply_client_marker(prompt: str | list[dict[str, Any]], args: argparse.Namespace) -> str | list[dict[str, Any]]:
+    """Prepend a `client_info` prompt-part so the turn is attributable.
+
+    The server stores `user_prompt` verbatim, so the marker survives the round
+    trip. The agent treats unknown part types as inert. Returns the prompt
+    unchanged when client tagging is disabled.
+    """
+    client = client_name(args)
+    if not client:
+        return prompt
+    marker = {"type": CLIENT_PART_TYPE, "client": client}
+    if isinstance(prompt, str):
+        return [marker, {"type": "text", "text": prompt}]
+    return [marker, *prompt]
+
+
 def create_body(args: argparse.Namespace) -> dict[str, Any]:
-    body: dict[str, Any] = {"user_prompt": load_prompt(args)}
+    body: dict[str, Any] = {"user_prompt": apply_client_marker(load_prompt(args), args)}
     entity, project = resolve_create_scope(args)
     for key, value in (("entity", entity), ("project", project), ("title", getattr(args, "title", None))):
         if value is not None:
@@ -573,6 +612,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--agent-config-override",
         help="Request a named agent variant for this turn (see the `aliases` command for valid values). "
         "Null uses the service default and is not inherited from the parent turn. Unknown values are rejected with 422.",
+    )
+    create.add_argument(
+        "--client",
+        default=None,
+        help="Client attribution tag carried as a `client_info` prompt-part and request headers "
+        "(default: coding_agent). Overrides WB_AGENT_CLIENT; pass an empty string to disable tagging.",
     )
     create.add_argument("--wait", action="store_true", help="Wait for terminal state after creating the turn")
     create.add_argument("prompt", nargs="*", help="Prompt text; omitted prompt is read from stdin")

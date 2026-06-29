@@ -139,6 +139,22 @@ The schema also accepts unknown prompt part objects with a required `type` strin
 compatibility. Prefer the documented W&B-specific part types above unless the current OpenAPI
 schema says otherwise.
 
+### Client attribution
+
+`CreateTurnRequest` has **no caller-settable client/source field**. `user_context` appears on the
+turn *response* but not the request body, and unknown top-level keys (e.g. `client`) are dropped
+server-side, so the only attribution channel that persists on the stored turn is `user_prompt`
+itself. The helper tags traffic with a forward-compatible prompt part:
+
+```json
+{"type": "client_info", "client": "coding_agent"}
+```
+
+prepended to `user_prompt` (a plain-text prompt is promoted to a parts list). The service stores it
+verbatim and the agent treats the unknown part as inert. The helper also sends `X-Wandb-Client` and
+`User-Agent` request headers carrying the same tag for backends that read request metadata. Control
+the value with `--client <name>` or `WB_AGENT_CLIENT`; an empty value disables tagging.
+
 ## Turn Response Shape
 
 Important fields:

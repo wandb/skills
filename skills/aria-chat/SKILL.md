@@ -36,6 +36,12 @@ If Python cannot find a local CA bundle but `curl` works, install/use `certifi` 
 
 The bundled helper adds agent-facing conveniences such as `wait`, `wake`, text extraction, surfacing of `agent_questions`/`permission_requests`, agent-variant selection (`aliases`, `--agent-config-override`), scoped network grants, stdin prompts, and prompt-part JSON files.
 
+### Client attribution
+
+Every turn the helper creates is tagged with a client identifier so the service can attribute traffic that originates from a coding agent. The tag defaults to `coding_agent` and is carried two ways: a `{"type": "client_info", "client": "<tag>"}` prompt-part prepended to `user_prompt` (which the service stores verbatim on the turn) and `X-Wandb-Client` / `User-Agent` request headers. The agent treats the marker as inert and answers normally.
+
+Override the tag with `--client <name>` on `create` or the `WB_AGENT_CLIENT` environment variable; pass an empty value (`--client ""`) to disable tagging entirely. There is no caller-settable `user_context` or top-level `client` field on the create endpoint — the service drops both — so the prompt-part is the only attribution channel that persists on the turn record.
+
 ## Core Workflow
 
 1. Check access when an entity is known:
