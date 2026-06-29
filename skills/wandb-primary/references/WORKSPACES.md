@@ -109,6 +109,29 @@ wr.LinePlot(
 )
 ```
 
+### Panel types
+
+Panel classes live in `wandb_workspaces.reports.v2` (`wr.*`) — the same types as
+Reports. Only these render in workspace sections:
+
+| Panel | When to use | Key params |
+|---|---|---|
+| `wr.LinePlot` | Metric over time / training curves | `x`, `y` (list), `metric_regex`, `custom_expressions`, `smoothing_factor`, `plot_type` |
+| `wr.BarPlot` | Compare final metrics across runs | `metrics` (list), `orientation` ("v"/"h"), `max_bars_to_show` |
+| `wr.ScatterPlot` | Correlations, hyperparameter vs metric | `x`, `y`, `z` (optional), `regression` |
+| `wr.ScalarChart` | A single summary metric | `metric` (singular, not a list) |
+| `wr.ParallelCoordinatesPlot` | Sweep overview, many hparams at once | `columns` (list of `wr.ParallelCoordinatesPlotColumn`) |
+| `wr.ParameterImportancePlot` | Which hparams matter most | `with_respect_to` (target metric) |
+| `wr.RunComparer` | Side-by-side config/summary diff | `diff_only` |
+| `wr.CodeComparer` | Side-by-side code diff | `diff` ("split"/"unified") |
+| `wr.MediaBrowser` | Images / audio / video / tables | `media_keys` (list), `num_columns`, `mode` |
+| `wr.MarkdownPanel` | Notes, annotations | `markdown` |
+| `wr.CustomChart` | Anything not native — arbitrary Vega (heatmaps, histograms, confusion matrices) | `query`, `chart_name`, `chart_fields`; or `CustomChart.from_table(...)` |
+| `wr.WeavePanelSummaryTable` | A `wandb.Table` logged to run summary | `table_name` |
+
+Every panel accepts `layout=wr.Layout(x, y, w, h)` — width `w` in grid units (max 24,
+default 8), height `h` (default 6).
+
 ## Runset settings: filters, groupby, order, columns, run colors
 
 `ws.RunsetSettings` controls the left-hand run selector. Prefer structured filters
@@ -136,6 +159,68 @@ ws_view.save()
 Column names use `"run:state"`, `"summary:accuracy"`, `"config:learning_rate"`,
 `"tags:__ALL__"`. For grouped logic use `And`/`Or` from `wandb_workspaces.expr`.
 
+## Run grouping
+
+Grouping aggregates runs by a shared value (usually a config key) so cohorts compare
+as aggregate lines with variance bands.
+
+Workspace-level — groups the run sidebar and aggregates panels:
+
+```python
+ws_view.runset_settings = ws.RunsetSettings(groupby=[ws.Config("learning_rate")])
+```
+
+Accepts `ws.Config("key")`, `ws.Summary("key")`, `ws.Metric("key")`, `ws.Tags()`. To
+group by the `wandb.init(group=...)` attribute, use `ws.Metric("Group")` (capitalized).
+
+Panel-level — override grouping and set the aggregation per panel:
+
+```python
+wr.LinePlot(
+    x="Step", y=["loss"],
+    groupby=wr.Config("learning_rate"),
+    groupby_aggfunc="mean",       # "mean", "min", "max", "median", "sum", "samples"
+    groupby_rangefunc="stddev",   # "minmax", "stddev", "stderr", "none", "samples"
+)
+```
+
+`groupby_aggfunc` sets the aggregate line; `groupby_rangefunc` sets the shaded band
+(`"stddev"` = ±1σ, `"minmax"` = full range, `"samples"` = individual faded lines).
+`wr.BarPlot` and `wr.ScalarChart` accept both too.
+
+## Run visibility, pinning, and baselines
+
+Per-run visibility and color go through `run_settings` (keys are run IDs):
+
+```python
+ws.RunsetSettings(
+    run_settings={
+        "abc123": ws.RunSettings(disabled=True),    # hide from all panels
+        "def456": ws.RunSettings(color="#00ff00"),  # visible, green
+    },
+)
+```
+
+Pinned runs stay visible regardless of filters (max 20) and may be cross-project:
+
+```python
+ws.RunsetSettings(
+    pinned_runs=[
+        "abc123",                                            # same project
+        "other-entity/other-project/def456",                 # cross-project
+        ws.RunRef("ghi789", entity="team", project="proj"),  # typed ref
+    ],
+)
+```
+
+Cross-project pins link back to the source run — nothing is imported. A **baseline
+run** is a reference point: it pins automatically, renders bolder/dashed in line plots,
+and enables delta columns in the runs table.
+
+```python
+ws.RunsetSettings(baseline_run="abc123")  # or ws.RunRef(...) for cross-project
+```
+
 ## Validate keys first
 
 Before adding a panel or filter, confirm the metric/config key exists - an invented
@@ -161,6 +246,11 @@ guessing.
 | Slash in metric names | Wrap in `${...}` inside custom expressions, else `a/b` parses as division. |
 | `run_settings` keys are run IDs | Not display names - use `run.id`. |
 | `auto_generate_panels` is set-once | Only at workspace creation; cannot be changed later. |
+| Panel metric params differ | `wr.BarPlot` uses `metrics` (list), `wr.ScalarChart` uses `metric` (singular), `wr.LinePlot` uses `y` (list). Not interchangeable. |
+| Raw-spec `id` required for updates | Omitting `id` in `upsertView` creates a NEW view instead of updating. Always fetch the view first to get its `id`. |
+| `inserted=False` is success | The `upsertView` mutation returns `inserted=False` when updating an existing view (vs `True` for a new one). Not an error. |
+| Verify raw-spec edits | A mutation can return success while a panel fails to render. Re-fetch the spec and assert your change landed before reporting done. |
+| Section grid layout | `ws.SectionLayoutSettings(columns=3, rows=2)` controls the panel grid; panels flow left-to-right, top-to-bottom. |
 | Don't mass-edit on ambiguity | If a target view/section is ambiguous, surface candidates before guessing. |
 
 ## Raw-spec fallback for the default user workspace
@@ -227,6 +317,25 @@ execute_graphql(api, mutation, {
 })
 print(f"Updated workspace: https://wandb.ai/{entity}/{project}/?nw={token}")
 ```
+
+## Listing all views in a project
+
+To enumerate a project's workspace views (to find a saved view's `nw` id, or to
+distinguish personal from saved views), query `allViews`. Reuses the `execute_graphql`
+helper, `api`, `entity`, and `project` from the raw-spec section above.
+
+```python
+list_q = """query ($e:String!,$p:String!){
+  project(entityName:$e,name:$p){ allViews(viewType:"project-view",first:200){
+    edges{ node{ id name displayName } } } } }"""
+for e in execute_graphql(api, list_q, {"e": entity, "p": project})["project"]["allViews"]["edges"]:
+    node = e["node"]
+    is_personal = "nwuser" in node["name"]
+    print(f"{'[personal]' if is_personal else '[saved]   '} {node['displayName']}  ({node['name']})")
+```
+
+Backend view names encode the kind: a personal workspace is `nw-<token>-w` (the
+`?nw=nwuser<username>` URL), a saved view is `nw-<id>-v` (the `?nw=<id>` URL).
 
 ## Final reply
 

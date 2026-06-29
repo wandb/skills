@@ -19,6 +19,9 @@ Usage:
         results_summary,         # Print compact eval summary
         eval_health,             # Extract status/counts from Evaluation.evaluate calls
         eval_efficiency,         # Compute tokens-per-success across eval calls
+        safe_eval_root_summary,  # Compact aggregate evidence from one Evaluation.evaluate call
+        safe_eval_child_summary, # Count predict_and_score rows first; sample full payloads (capped)
+        safe_project_eval_summary,  # Project eval landscape without predict_and_score payload scans
     )
 """
 
@@ -108,6 +111,200 @@ def get_token_usage(call: Any) -> dict[str, int]:
         "input_tokens": total_input,
         "output_tokens": total_output,
         "total_tokens": total_input + total_output,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Safe eval access — count first, cap payloads (memory-safe on large projects)
+# ---------------------------------------------------------------------------
+#
+# Evaluation.predict_and_score (PAS) payloads are large. Materializing every PAS
+# call on a project with thousands of eval rows can exhaust memory. These helpers
+# count rows server-side first, fetch a narrow projection by default, and pull
+# full payloads only as an explicit, capped sample.
+
+_PAS_NARROW_COLUMNS = [
+    "id",
+    "parent_id",
+    "op_name",
+    "display_name",
+    "started_at",
+    "ended_at",
+    "summary",
+    "exception",
+]
+_PAS_DEFAULT_FULL_SAMPLE_CAP = 50
+_EVAL_ROOT_COLUMNS = [
+    "id",
+    "display_name",
+    "started_at",
+    "ended_at",
+    "summary",
+    "output",
+    "exception",
+]
+_PAS_SAMPLE_COLUMNS = [*_PAS_NARROW_COLUMNS, "inputs", "output"]
+_EVAL_OUTPUT_KEYS = [
+    "score",
+    "passed",
+    "must_pass_ok",
+    "scenario_count",
+    "scenario_pass_rate",
+    "task_count",
+    "trial_count",
+    "task_trial_count",
+    "features",
+    "scorer_summary",
+]
+
+
+def _op_ref(entity: str, project: str, op: str) -> str:
+    return f"weave:///{entity}/{project}/op/{op}:*"
+
+
+def _count_calls(client: Any, project_id: str, filter_dict: dict[str, Any]) -> int:
+    from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+
+    return client.server.calls_query_stats(
+        CallsQueryStatsReq(project_id=project_id, filter=filter_dict)
+    ).count
+
+
+def _limit(limit: int, count: int, cap: int | None = None) -> int:
+    safe = min(max(limit, 0), count)
+    return min(safe, cap) if cap is not None else safe
+
+
+def _call_row(call: Any) -> dict[str, Any]:
+    summary = unwrap(getattr(call, "summary", None)) or {}
+    weave = summary.get("weave", {}) if isinstance(summary, dict) else {}
+    started = getattr(call, "started_at", None)
+    ended = getattr(call, "ended_at", None)
+    duration = None
+    if started and ended:
+        try:
+            duration = round((ended - started).total_seconds(), 3)
+        except Exception:
+            pass
+    op_name = str(getattr(call, "op_name", "") or "")
+    return {
+        "id": getattr(call, "id", None),
+        "parent_id": getattr(call, "parent_id", None),
+        "op": op_name.rsplit("/op/", 1)[-1].rsplit(":", 1)[0],
+        "display_name": getattr(call, "display_name", None),
+        "started_at": str(started or ""),
+        "ended_at": str(ended or ""),
+        "duration_s": duration,
+        "status": weave.get("status") or summary.get("status") or "unknown",
+        "status_counts": weave.get("status_counts")
+        or summary.get("status_counts")
+        or {},
+        "exception": str(getattr(call, "exception", "") or "")[:500] or None,
+    }
+
+
+def _call_rows(client: Any, call_filter: Any, limit: int, columns: list[str]) -> list[dict[str, Any]]:
+    if not limit:
+        return []
+    return [
+        _call_row(call)
+        for call in client.get_calls(filter=call_filter, limit=limit, columns=columns)
+    ]
+
+
+def safe_eval_root_summary(eval_call: Any) -> dict[str, Any]:
+    """Return compact aggregate evidence from one Evaluation.evaluate call."""
+    output = unwrap(getattr(eval_call, "output", None)) or {}
+    output = output if isinstance(output, dict) else {}
+    row_summary = output.get("row_summary") or {}
+    row = _call_row(eval_call)
+    for key in _EVAL_OUTPUT_KEYS:
+        row[key] = output.get(key)
+    row["row_output"] = row_summary.get("output") or output.get("output")
+    row["model_latency"] = output.get("model_latency") or row_summary.get(
+        "model_latency"
+    )
+    return row
+
+
+def safe_eval_child_summary(
+    client: Any,
+    entity: str,
+    project: str,
+    eval_call: Any,
+    *,
+    narrow_limit: int = 1000,
+    full_sample_limit: int = 0,
+    full_sample_cap: int = _PAS_DEFAULT_FULL_SAMPLE_CAP,
+) -> dict[str, Any]:
+    """Count PAS rows first; fetch full payloads only as an explicit capped sample.
+
+    Returns the eval row, the predict_and_score count, a narrow projection of
+    child rows (capped at ``narrow_limit``), and — only if ``full_sample_limit``
+    is set — a capped sample of full-payload rows (bounded by ``full_sample_cap``).
+    """
+    from weave.trace.weave_client import CallsFilter
+
+    project_id = f"{entity}/{project}"
+    eval_id = getattr(eval_call, "id", None)
+    if not eval_id:
+        raise ValueError("eval_call must have an id")
+
+    pas_ref = _op_ref(entity, project, "Evaluation.predict_and_score")
+    pas_filter = {"op_names": [pas_ref], "parent_ids": [eval_id]}
+    pas_count = _count_calls(client, project_id, pas_filter)
+    call_filter = CallsFilter(op_names=[pas_ref], parent_ids=[eval_id])
+    narrow_rows = _call_rows(
+        client, call_filter, _limit(narrow_limit, pas_count), _PAS_NARROW_COLUMNS
+    )
+    sample_limit = _limit(full_sample_limit, pas_count, max(full_sample_cap, 0))
+    sample_rows = _call_rows(client, call_filter, sample_limit, _PAS_SAMPLE_COLUMNS)
+
+    return {
+        "eval": _call_row(eval_call),
+        "predict_and_score_count": pas_count,
+        "narrow_columns": _PAS_NARROW_COLUMNS,
+        "narrow_rows_fetched": len(narrow_rows),
+        "narrow_rows_truncated": pas_count > len(narrow_rows),
+        "narrow_rows": narrow_rows,
+        "full_payload_sample_limit": sample_limit,
+        "full_payload_sample_rows": sample_rows,
+    }
+
+
+def safe_project_eval_summary(
+    client: Any,
+    entity: str,
+    project: str,
+    *,
+    eval_limit: int = 1000,
+) -> dict[str, Any]:
+    """Summarize a project's eval landscape without predict_and_score payload scans."""
+    from weave.trace.weave_client import CallsFilter
+
+    project_id = f"{entity}/{project}"
+    eval_ref = _op_ref(entity, project, "Evaluation.evaluate")
+    pas_ref = _op_ref(entity, project, "Evaluation.predict_and_score")
+    eval_count = _count_calls(client, project_id, {"op_names": [eval_ref]})
+    pas_count = _count_calls(client, project_id, {"op_names": [pas_ref]})
+    root_limit = _limit(eval_limit, eval_count)
+    roots = [
+        safe_eval_root_summary(call)
+        for call in client.get_calls(
+            filter=CallsFilter(op_names=[eval_ref]),
+            sort_by=[{"field": "started_at", "direction": "desc"}],
+            limit=root_limit,
+            columns=_EVAL_ROOT_COLUMNS,
+        )
+    ] if root_limit else []
+
+    return {
+        "evaluation_count": eval_count,
+        "predict_and_score_count": pas_count,
+        "eval_root_columns": _EVAL_ROOT_COLUMNS,
+        "eval_roots_fetched": len(roots),
+        "eval_roots_truncated": eval_count > len(roots),
+        "eval_roots": roots,
     }
 
 

@@ -1297,7 +1297,9 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 | Query GenAI traces, calls, evaluations | **Weave SDK** (`weave.init()`, `client.get_calls()`) — see `references/WEAVE_SDK.md` |
 | Convert Weave wrapper types to plain Python | **`weave_helpers.unwrap()`** |
 | Build a DataFrame from training runs | **`wandb_helpers.fetch_runs()`** (fast) or **`wandb_helpers.runs_to_dataframe()`** |
+| Read a run's console logs / diagnose a crash from logs | **`Run.logLines` GraphQL** — see `references/RUN_LOGS.md` |
 | Extract eval results for analysis | **`weave_helpers.eval_results_to_dicts()`** |
+| Explore evals on a large project without OOM (count first, cap payloads) | **`weave_helpers.safe_project_eval_summary()`** / **`safe_eval_child_summary()`** |
 | Count traces without fetching them | **`calls_query_stats`** from Weave server API |
 | Need low-level Weave filtering (CallsFilter, Query) | **Raw Weave SDK** — see `references/WEAVE_SDK.md` |
 | Create a report | **`wandb-workspaces`** (`wandb_workspaces.reports.v2`) — see `references/REPORTS.md` |
@@ -1328,6 +1330,9 @@ from weave_helpers import (
     results_summary,         # Print compact eval summary
     eval_health,             # Extract status/counts from Evaluation.evaluate calls
     eval_efficiency,         # Compute tokens-per-success across eval calls
+    safe_eval_root_summary,  # Compact aggregate evidence from one Evaluation.evaluate call
+    safe_eval_child_summary, # Count predict_and_score rows first; sample full payloads (capped)
+    safe_project_eval_summary,  # Project eval landscape without predict_and_score payload scans
 )
 
 # W&B helpers (training runs, metrics) — large-project optimized
@@ -1385,6 +1390,7 @@ Read these as needed — they contain full API surfaces and recipes:
 
 - **`references/WANDB_CONCEPTS.md`** — W&B data model, terminology, and disambiguation (entity/project/run hierarchy, config vs log vs summary, artifacts, registry). Read this to understand what users are asking about.
 - **`references/WANDB_SDK.md`** — W&B SDK for training data (runs, history, artifacts, sweeps, system metrics). API call reference.
+- **`references/RUN_LOGS.md`** — Reading run console logs via the `logLines` GraphQL connection (paginate or tail), multipart `output.log` layout and stitching, and crash/resume log gotchas.
 - **`references/WEAVE_SDK.md`** — Weave SDK for GenAI traces (`client.get_calls()`, `CallsFilter`, `Query`, stats). Start here for Weave queries.
 - **`references/SIGNAL_PROMPT_EXAMPLES.md`** — Signal prompt patterns and calibration notes for `LLMAsAJudgeScorer` classifier prompts.
 - **`references/HYPOTHESIS_GENERATION.md`** — Four-phase synergistic hypothesis generation methodology. Read this for any task involving experiment analysis, anomaly diagnosis, "what went wrong?", or "what should I try next?".
