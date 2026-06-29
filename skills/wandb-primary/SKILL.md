@@ -1,6 +1,6 @@
 ---
 name: wandb-primary
-description: "Primary W&B skill for broad or mixed Weights & Biases work: project overviews, W&B runs and artifacts, Weave traces and evaluations, Reports, Signal Builder, and Launch workflows. Use when the task spans multiple W&B surfaces or the user asks generally what is happening in a W&B project."
+description: "Primary W&B skill for broad or mixed Weights & Biases work: project overviews, W&B runs and artifacts, Weave traces and evaluations, Reports, and Launch workflows. Use when the task spans multiple W&B surfaces or the user asks generally what is happening in a W&B project."
 ---
 <!--
 SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
@@ -1022,19 +1022,6 @@ result = save_report_verified(report)  # draft=True by default
 print(result["answer"])                # answer=... verified=True/False url=...
 ```
 
-## Building Weave signals (ClassifierMonitor + LLMAsAJudgeScorer)
-
-Signals are binary classifiers that run automatically on new Weave traces. A
-signal is an `LLMAsAJudgeScorer` prompt owned by a `ClassifierMonitor`; the
-scorer decides what to detect, and the monitor decides which traces to evaluate.
-
-Read `references/SIGNALS.md` before building or modifying a signal. It has the
-full 4-phase workflow (explore ops → sample traces → build prompt → persist),
-the signal rules and approval gates, prompt-structure guidance, the
-`{output[...]}` interpolation rules, and the `create_signal()` /
-`add_scorer_to_monitor()` recipes. Always import helpers from
-`skills/wandb-primary/scripts/signal_helpers.py` rather than calling raw Weave APIs.
-
 ## Launch
 
 Use `skills/wandb-primary/scripts/launch_helpers.py`. Do not train locally to test GPU
@@ -1305,7 +1292,6 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 | Create a report | **`wandb-workspaces`** (`wandb_workspaces.reports.v2`) — see `references/REPORTS.md` |
 | Inspect or edit a workspace view (sections, panels, runset filters, pinned columns, run colors) | **`wandb_workspaces.workspaces`** — see `references/WORKSPACES.md` |
 | Set up production monitoring | **`weave.Monitor`** |
-| Create / tag / classify / flag patterns in Weave traces | **Signal builder** with `signal_helpers.py` — see "Building Weave signals" |
 | Reproduce/relaunch a run | **`launch_helpers.relaunch_run()`** or CLI |
 | Launch a training job on GPU/K8s | **`launch_helpers.submit_code_artifact_job()`** |
 | Modify code and launch | **`launch_helpers.download_code_artifact()`** -> edit -> **`create_and_launch_modified_job()`** |
@@ -1362,21 +1348,6 @@ from launch_helpers import (
     inspect_queue,                       # Print queue details
 )
 
-# Signal builder helpers (create, test, and manage Weave classifier monitors)
-from signal_helpers import (
-    explore_ops,                # List ops plus input/output schema samples
-    sample_traces,              # Query and unwrap traces for prompt design
-    test_signal_prompt,         # Preview a classifier prompt before writing objects
-    list_signal_monitors,       # List existing ClassifierMonitors
-    create_signal,              # Create model + LLMAsAJudgeScorer + ClassifierMonitor
-    add_scorer_to_monitor,      # Add an existing scorer ref to an existing monitor
-    update_scorer_prompt,       # Publish a new scorer prompt version
-    update_monitor,             # Update monitor filters/activity/scorers
-    SUCCESSFUL_TRACES_QUERY,
-    SUCCESSFUL_ROOT_TRACES_QUERY,
-    FAILED_TRACES_QUERY,
-)
-
 # Report helpers (save/edit W&B Reports with read-back verification)
 from report_helpers import (
     save_report_verified,   # save a report (draft by default) then re-read to confirm it landed
@@ -1392,7 +1363,6 @@ Read these as needed — they contain full API surfaces and recipes:
 - **`references/WANDB_SDK.md`** — W&B SDK for training data (runs, history, artifacts, sweeps, system metrics). API call reference.
 - **`references/RUN_LOGS.md`** — Reading run console logs via the `logLines` GraphQL connection (paginate or tail), multipart `output.log` layout and stitching, and crash/resume log gotchas.
 - **`references/WEAVE_SDK.md`** — Weave SDK for GenAI traces (`client.get_calls()`, `CallsFilter`, `Query`, stats). Start here for Weave queries.
-- **`references/SIGNAL_PROMPT_EXAMPLES.md`** — Signal prompt patterns and calibration notes for `LLMAsAJudgeScorer` classifier prompts.
 - **`references/HYPOTHESIS_GENERATION.md`** — Four-phase synergistic hypothesis generation methodology. Read this for any task involving experiment analysis, anomaly diagnosis, "what went wrong?", or "what should I try next?".
 - **`references/REPORTS.md`** — W&B Report authoring/editing: runsets, structured filters, panels, media, columns, loading, and share links.
 - **`references/WORKSPACES.md`** — Programmatic workspace views: load/create, sections and panels, runset filters/groupby/columns/run colors, save semantics, and the raw-spec path for the default user workspace.
