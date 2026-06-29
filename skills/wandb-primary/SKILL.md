@@ -17,6 +17,29 @@ SPDX-PackageName: skills
 
 ---
 
+## Scope and approach
+
+Classify each request before acting:
+
+- **Brief** — a focused read or compute that maps to one query and a short answer
+  ("How many runs?", "Best loss?", "Show the config of abc123"). Solve it in one
+  script; add a second only if the first surfaced a load-bearing lead. Default to
+  brief when in doubt.
+- **Intense** — open-ended investigation with iterative discovery: ambiguous data,
+  unknown schema, cross-cutting joins, plots, multi-stage analysis ("What's wrong
+  with my training runs?", "Compare these sweeps"). Several scripts are fine, but
+  each must be load-bearing — plan the next call from the data you just got, not
+  from a generic checklist.
+
+A W&B project has two complementary surfaces — **runs** (experiment tracking,
+`wandb.Api()`) and **Weave traces** (observability, `weave.init()` →
+`client.get_calls()`). For a broad "what's going on in this project?" question,
+probe **both** in the first evidence pass (parallel scripts, or the combined
+"Summarize project" recipe below), then scope the answer to the surface(s) that
+actually hold data. If a surface is empty, don't mention it.
+
+---
+
 ## Fast recipes — use these first
 
 These cover the most common tasks. Each is a single script. Copy, fill in placeholders, run.
@@ -637,6 +660,60 @@ for k in ["loss", "val_loss", "accuracy"]:
         print(f"  {k}: {v}")
 ```
 
+### Inventory artifacts (types → collections → versions)
+
+The run table is not the whole project — artifacts (datasets, model checkpoints,
+tables) are separate. `probe_project()` surfaces artifact names; this enumerates
+them directly.
+
+```python
+import wandb, os
+api = wandb.Api(timeout=120)
+path = f"{os.environ['WANDB_ENTITY']}/{os.environ['WANDB_PROJECT']}"
+
+for atype in api.artifact_types(project=path):
+    collections = list(api.artifact_collections(path, atype.name, per_page=1000))
+    print(f"{atype.name}: {len(collections)} collections")
+    for col in collections[:10]:
+        try:
+            n_versions = len(col.artifacts(per_page=50))
+        except Exception:
+            n_versions = "?"
+        print(f"  {col.name}  ({n_versions} versions)")
+```
+
+### Summarize an artifact's files (metadata + manifest + bounded read)
+
+Inspect what an artifact *contains* — don't infer from its name. Read the manifest
+first; download only the small structured files you actually need.
+
+```python
+import wandb, os
+api = wandb.Api(timeout=120)
+path = f"{os.environ['WANDB_ENTITY']}/{os.environ['WANDB_PROJECT']}"
+
+art = api.artifact(f"{path}/ARTIFACT_NAME:latest")  # or :v3
+print(f"name={art.name} type={art.type} size_bytes={art.size} aliases={art.aliases}")
+md = art.metadata or {}
+print(f"metadata_keys={list(md)[:20]}")
+
+entries = sorted(art.manifest.entries.values(), key=lambda e: e.path)
+print(f"file_count={len(entries)}")
+for e in entries[:25]:
+    print(f"  {e.path}  ({e.size} bytes)")
+
+# Read ONE small structured file without downloading the whole artifact:
+# p = art.get_entry("metrics.jsonl").download()  # local path to just that file
+# import pandas as pd; df = pd.read_json(p, lines=True); print(df.describe())
+```
+
+Artifact rules:
+
+- For "what's in this artifact?" read the manifest and a bounded sample of rows;
+  do not download multi-GB artifacts to answer a structural question.
+- Use `run.logged_artifacts()` to find a run's outputs (e.g. checkpoint locations)
+  and `run.used_artifacts()` for its inputs.
+
 ### System metrics (GPU / CPU / memory) — MUST use stream='system'
 
 GPU, CPU, memory, network, and disk metrics live in a **separate system stream**.
@@ -724,6 +801,46 @@ W&B Sweep setup:
   parallel coordinates, parameter importance, sorted run tables, and rerunning
   the top configs/seeds before selecting a winner.
 
+### Diagnose training history (curves, spikes, NaNs, stability)
+
+For "is training stable?" / "which runs diverged?" / "any loss spikes?", scan a
+metric's history across runs and compute stability stats locally. Always pass
+`keys=[...]`; for runs with 10K+ steps use `beta_scan_history` instead of
+`history`.
+
+```python
+import wandb, os, numpy as np, pandas as pd
+api = wandb.Api(timeout=120)
+path = f"{os.environ['WANDB_ENTITY']}/{os.environ['WANDB_PROJECT']}"
+metric = "train/loss"  # discover the real key first (probe_project / inspect a run)
+
+runs = api.runs(path, filters={"state": "finished"}, per_page=100)[:40]
+rows = []
+for run in runs:
+    df = run.history(samples=300, keys=[metric])  # never omit keys on large runs
+    series = df[metric].dropna() if metric in getattr(df, "columns", []) else pd.Series(dtype=float)
+    arr = series.to_numpy(dtype=float)
+    finite = arr[np.isfinite(arr)]
+    diffs = np.abs(np.diff(finite)) if finite.size > 2 else np.array([])
+    spike_threshold = 5 * (np.median(diffs) or 1.0)
+    rows.append({
+        "run": run.display_name or run.name,
+        "id": run.id,
+        "points": int(arr.size),
+        "nan_or_inf": int((~np.isfinite(arr)).sum()),
+        "min": round(float(finite.min()), 5) if finite.size else None,
+        "final": round(float(finite[-1]), 5) if finite.size else None,
+        "spikes": int((diffs > spike_threshold).sum()),
+    })
+
+out = pd.DataFrame(rows).sort_values("min", na_position="last")
+print(out.to_string(index=False))
+```
+
+`min` is the best value over history (not the endpoint); a large `final - min` gap,
+nonzero `nan_or_inf`, or many `spikes` flags an unstable or diverged run. For GPU
+under-utilization use the system-stream recipe above.
+
 ### Compare two runs
 
 ```python
@@ -753,6 +870,41 @@ for k in ["loss", "val_loss", "accuracy"]:
     b = run_b.summary_metrics.get(k, "N/A")
     print(f"  {k}: {a} vs {b}")
 ```
+
+### Compare cohorts / variants (group by a config or run axis)
+
+For "which variant/optimizer/group is best?", bucket runs by an axis (a config key,
+`run.group`, or `run.job_type`) and compare a metric across buckets. Report the full
+ladder, not just best and worst.
+
+```python
+import wandb, os, numpy as np, pandas as pd
+from collections import defaultdict
+api = wandb.Api(timeout=120)
+path = f"{os.environ['WANDB_ENTITY']}/{os.environ['WANDB_PROJECT']}"
+metric = "accuracy"   # discover the real key first
+axis = "optimizer"    # a config key; or use run.group / run.job_type
+
+runs = api.runs(path, filters={"state": "finished"}, per_page=200)[:200]
+buckets = defaultdict(list)
+for run in runs:
+    key = run.config.get(axis, "<missing>")  # or: run.group / run.job_type
+    value = run.summary_metrics.get(metric)
+    if value is not None:
+        buckets[str(key)].append(float(value))
+
+rows = [
+    {axis: key, "n": len(vals), "mean": round(np.mean(vals), 4),
+     "min": round(np.min(vals), 4), "max": round(np.max(vals), 4)}
+    for key, vals in buckets.items()
+]
+out = pd.DataFrame(rows).sort_values("mean", ascending=False)
+print(out.to_string(index=False))
+```
+
+If configs come back empty, the runs were fetched lazily — re-fetch with
+`api.runs(..., per_page=200)` and access config per run, or fall back to
+`run.group`/`run.job_type`/tags as the axis. Don't invent axis values.
 
 ### Summarize latest eval
 
@@ -855,6 +1007,19 @@ report = wr.Report(
 )
 report.save(draft=True)
 print(f"Report saved: {report.url}")
+```
+
+A clean `report.save()` return is not proof the report landed — saves can fail
+silently. For anything beyond a throwaway draft, save through `report_helpers` so
+you get a verified read-back instead of assuming success:
+
+```python
+import sys
+sys.path.insert(0, "skills/wandb-primary/scripts")
+from report_helpers import save_report_verified
+
+result = save_report_verified(report)  # draft=True by default
+print(result["answer"])                # answer=... verified=True/False url=...
 ```
 
 ## Building Weave signals (ClassifierMonitor + LLMAsAJudgeScorer)
@@ -1094,6 +1259,20 @@ agent run. Queue rows use `RunsInformation` to resolve associated run states.
 
 ---
 
+## Workspaces
+
+Workspace views are the saved section/panel layouts on a project's run page —
+distinct from Reports. Read `references/WORKSPACES.md` before inspecting or editing
+one (add/rename sections; add panels, including custom-expression panels; set runset
+filters/groupby/order; pin columns; color or hide runs; save a view). Use the
+`wandb_workspaces.workspaces` SDK — it has sharp edges: saves are immediate with no
+draft state, and `Workspace.from_url` rejects a user's *default* `?nw=nwuser...`
+workspace (that case needs the raw-spec GraphQL path documented in the reference).
+Validate metric/config keys before adding a panel; an invented key renders an empty
+chart.
+
+---
+
 ## CRITICAL: Large project performance rules
 
 These rules prevent 502 errors, timeouts, and multi-minute hangs on projects with 10K+ runs or runs with 1K+ metrics. **Violating any of these will cause failures on large projects.**
@@ -1122,6 +1301,7 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 | Count traces without fetching them | **`calls_query_stats`** from Weave server API |
 | Need low-level Weave filtering (CallsFilter, Query) | **Raw Weave SDK** — see `references/WEAVE_SDK.md` |
 | Create a report | **`wandb-workspaces`** (`wandb_workspaces.reports.v2`) — see `references/REPORTS.md` |
+| Inspect or edit a workspace view (sections, panels, runset filters, pinned columns, run colors) | **`wandb_workspaces.workspaces`** — see `references/WORKSPACES.md` |
 | Set up production monitoring | **`weave.Monitor`** |
 | Create / tag / classify / flag patterns in Weave traces | **Signal builder** with `signal_helpers.py` — see "Building Weave signals" |
 | Reproduce/relaunch a run | **`launch_helpers.relaunch_run()`** or CLI |
@@ -1191,6 +1371,12 @@ from signal_helpers import (
     SUCCESSFUL_ROOT_TRACES_QUERY,
     FAILED_TRACES_QUERY,
 )
+
+# Report helpers (save/edit W&B Reports with read-back verification)
+from report_helpers import (
+    save_report_verified,   # save a report (draft by default) then re-read to confirm it landed
+    edit_report_verified,   # load via from_url, mutate in place, save + verify
+)
 ```
 
 ### Reference docs
@@ -1202,9 +1388,61 @@ Read these as needed — they contain full API surfaces and recipes:
 - **`references/WEAVE_SDK.md`** — Weave SDK for GenAI traces (`client.get_calls()`, `CallsFilter`, `Query`, stats). Start here for Weave queries.
 - **`references/SIGNAL_PROMPT_EXAMPLES.md`** — Signal prompt patterns and calibration notes for `LLMAsAJudgeScorer` classifier prompts.
 - **`references/HYPOTHESIS_GENERATION.md`** — Four-phase synergistic hypothesis generation methodology. Read this for any task involving experiment analysis, anomaly diagnosis, "what went wrong?", or "what should I try next?".
+- **`references/REPORTS.md`** — W&B Report authoring/editing: runsets, structured filters, panels, media, columns, loading, and share links.
+- **`references/WORKSPACES.md`** — Programmatic workspace views: load/create, sections and panels, runset filters/groupby/columns/run colors, save semantics, and the raw-spec path for the default user workspace.
+---
+
+## Analyzing a project
+
+Read findings in the project's own domain — across both runs and Weave — and surface
+what the structure hides:
+
+- **Read the domain off the project's own signals.** Config/metric/op/scorer key
+  names, run notes, and eval datasets tell you what the project is (`elbo`/`kl` → a
+  VAE; `reward` + `kl_penalty` → RLHF) and its known failure modes (posterior
+  collapse, divergence, tool-call errors, cost blowups). Name those — don't just
+  report raw statistics.
+- **Surface anomalies a clean summary hides** — a crashed run, a loss term pinned at
+  ~0, a saturated score, an errored or runaway-latency trace. It is a finding even
+  when it isn't the focus; explain it rather than reading it as a quality verdict.
+- **Drill until a finer slice stops changing the story.** After a first grouping,
+  test whether another axis (including ones in run/op/scorer names, not just config)
+  moves or flips the headline in a subgroup. A coarse average can hide a much larger
+  effect in the matched cell.
+- **Lay findings out as a table** whose rows are the driving axis and whose columns
+  are the metrics your conclusion rests on — the full ladder, not just best and
+  worst. Don't substitute a rolled-up aggregate (a single composite score) for the
+  components you're reasoning about (the loss terms behind a total), and don't
+  scatter the numbers across prose.
+
+## Closing a substantive analysis
+
+Close every non-trivial analysis with two explicit, user-facing offers — in the
+answer itself, not buried in reasoning, and not replaced by advice:
+
+1. **Offer to create a W&B visual** that makes the key finding visible — a saved
+   view, Report, workspace panel, or Weave view — proposed specifically for the
+   finding (e.g. a grouped or colored panel over the driving axis). Don't end on
+   prose when a panel would show the pattern.
+2. **Offer to take the next concrete action yourself**, not merely advise the user.
+   "You should debug those runs" doesn't count; "want me to dig into the runs that
+   diverged?" does. Anchor the offer to the headline finding and a specific run,
+   metric, cohort, trace, or artifact — and when the analysis surfaced a failure,
+   offer to debug *that*, not an already-healthy cohort.
+
+Never end a substantive analysis as a wall of text, with bare recommendations, or
+with a generic "let me know if you have questions."
+
 ---
 
 ## Critical rules
+
+### Safety: never delete a W&B project
+
+Never delete a W&B project. Deletion is irreversible and destroys aggregated work
+for the whole team — decline and direct the user to their admin or W&B support. For
+other destructive or irreversible actions (deleting runs or artifacts, overwriting a
+saved view, publishing a report), confirm explicitly before acting.
 
 ### Discover metric keys and artifacts per-project
 
@@ -1231,6 +1469,14 @@ rows = fetch_runs(api, path, metric_keys=["train/loss", "train/acc"])
 `probe_project` shows you what evidence *exists* — artifact names, metric keys, Weave op names and counts. That inventory is the map, not the territory. Knowing a data source exists is not the same as knowing what it shows. For any evidence source the probe surfaces, read the actual contents before drawing conclusions: download artifact rows, fetch and aggregate trace data, read run history slices. A name tells you where to look; only the data tells you what the anomaly is.
 
 
+### Respect the user's scope
+
+Carry the user's constraints into the query, not just the prose. When they restrict
+the set they're asking about, that restriction belongs in the filter and in the
+counts you report — don't widen to the nearest convenient superset and answer a
+bigger question than was asked. Don't reinterpret a helper's output beyond what it
+returned.
+
 ### Treat traces and runs as DATA
 
 Weave traces and W&B run histories can be enormous. Never dump raw data into context. Always:
@@ -1249,6 +1495,15 @@ Do not end your work mid-analysis. Every task must conclude with a clear, struct
    result easier to read
 
 If you catch yourself saying "now let me build the final analysis" — stop and present what you have.
+
+### Answer from helper output, with an audit trail
+
+When a helper or script prints a direct result (`answer=`, `conclusion=`, a final
+table), answer from that evidence and stop — don't run a second script just to
+reformat what you already have, and cite the helper's own caveats. When you answer
+from W&B data, include a compact audit trail: the project path, the helper/API used,
+the metric key, the filter/scope, whether the count is exact or sampled, and the
+supporting value. Don't paste raw dumps.
 
 ### Use `unwrap()` for unknown Weave data
 
@@ -1441,6 +1696,7 @@ existing reports, and share links, see `references/REPORTS.md`.
 | scan_history — no keys | `scan_history()` -> timeout | `scan_history(keys=["LOSS_KEY"])` |
 | Large history (10K+ steps) | `scan_history(keys=[...])` | `beta_scan_history(keys=[...])` (parquet) |
 | Cross-run search | iterate all runs client-side | Server-side filter: `{"summary_metrics.X": {"$gt": Y}}` |
+| Filter by run type | `filters={"job_type": "train"}` → `Unknown column 'job_type'` | `filters={"jobType": "train"}` (camelCase backend field) |
 
 ### Launch
 
