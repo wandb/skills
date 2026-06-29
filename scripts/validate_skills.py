@@ -10,6 +10,7 @@ from pathlib import Path
 
 EXPECTED_SKILLS = {
     "wandb-primary",
+    "aria-chat",
 }
 
 SECRET_PATTERNS = (

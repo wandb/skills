@@ -44,6 +44,7 @@ export WANDB_API_KEY=<your-key>
 | Skill                                    | Description                                                                                                                               | Status       |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [`wandb-primary`](skills/wandb-primary/) | Primary W&B skill for broad, mixed-surface W&B project analysis and workflows across runs, Weave, Reports, Signal Builder, and Launch. | experimental |
+| [`aria-chat`](skills/aria-chat/) | Delegate W&B analysis, debugging, and data questions to the hosted WB Agent over its HTTP API: create turns, poll/wait for completion, continue conversations, and answer the agent's clarifying questions or network-access requests. | experimental |
 <!-- END SKILL TABLE -->
 
 ## Benchmarks
