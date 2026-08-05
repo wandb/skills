@@ -186,6 +186,27 @@ W&B has two Python APIs that serve different purposes. Do NOT confuse them:
 
 ---
 
+## Code capture and relaunchability
+
+Code saving is off by default unless user/profile settings enable it. A training
+script can opt in with `wandb.Settings(save_code=True)` or
+`WANDB_SAVE_CODE=true`; `WANDB_DISABLE_CODE=true` overrides both.
+
+Captured source is stored as a `code` Artifact, not in `run.files()`. Find it
+through `run.logged_artifacts()`:
+
+```python
+code_artifacts = [art for art in run.logged_artifacts() if art.type == "code"]
+```
+
+The Artifact normally contains Python sources, `requirements.txt`, and
+Dockerfile-prefixed files from the working directory or configured `code_dir`.
+A project that logged only metrics and no job/code Artifact has nothing W&B
+Launch can relaunch; enable code saving and run again, or package local code as
+a job Artifact.
+
+---
+
 ## Artifacts
 
 Versioned data objects tracked as inputs/outputs of runs. Used for datasets, models, checkpoints, and any file-based data.
@@ -284,6 +305,19 @@ run.log({"predictions": table})
 ```
 
 Tables support rich media (images, audio, HTML) in cells and appear as interactive panels in the W&B UI.
+
+`log_mode` controls repeated logging:
+
+- `IMMUTABLE` (default): log once. Mutating and re-logging the same object is a
+  silent no-op.
+- `MUTABLE`: re-logging after mutation creates another Artifact version.
+- `INCREMENTAL`: each log uploads rows added since the previous log.
+
+`run.summary["key"]` stores a table-file reference. The same data is available
+as a generated `run_table` Artifact named `run-<run_id>-<key>`; incremental
+tables use `run-<run_id>-incr-<key>`. A normal `run.log()` Table is capped at
+10,000 rows, while an Artifact-backed Table supports up to 200,000 rows unless
+the class limit is explicitly changed.
 
 ---
 

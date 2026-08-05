@@ -1284,13 +1284,19 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 | Query GenAI traces, calls, evaluations | **Weave SDK** (`weave.init()`, `client.get_calls()`) — see `references/WEAVE_SDK.md` |
 | Convert Weave wrapper types to plain Python | **`weave_helpers.unwrap()`** |
 | Build a DataFrame from training runs | **`wandb_helpers.fetch_runs()`** (fast) or **`wandb_helpers.runs_to_dataframe()`** |
+| Inspect or compare runs with bounded, repeatable CLI recipes | **`wandb_run_ops.py`** — see `references/RUN_OPS.md` |
 | Read a run's console logs / diagnose a crash from logs | **`Run.logLines` GraphQL** — see `references/RUN_LOGS.md` |
+| Inventory, filter, or inspect Artifacts at scale | **`artifact_helpers.py`** / **`wandb_run_ops.py`** — see `references/ARTIFACT_OPS.md` |
+| Design Artifact lineage or Registry promotion | **`references/ARTIFACTS_AND_REGISTRY.md`** |
+| Inspect or change Runs Table state | **`references/RUNS_TABLE.md`** plus guarded workspace helpers |
 | Extract eval results for analysis | **`weave_helpers.eval_results_to_dicts()`** |
 | Explore evals on a large project without OOM (count first, cap payloads) | **`weave_helpers.safe_project_eval_summary()`** / **`safe_eval_child_summary()`** |
 | Count traces without fetching them | **`calls_query_stats`** from Weave server API |
 | Need low-level Weave filtering (CallsFilter, Query) | **Raw Weave SDK** — see `references/WEAVE_SDK.md` |
+| Read a Weave agent conversation or agent trace | **`weave_agent_ops.py`** — see `references/WEAVE_SDK.md` |
 | Create a report | **`wandb-workspaces`** (`wandb_workspaces.reports.v2`) — see `references/REPORTS.md` |
 | Inspect or edit a workspace view (sections, panels, runset filters, pinned columns, run colors) | **`wandb_workspaces.workspaces`** — see `references/WORKSPACES.md` |
+| Create an Artifact Collection Overview draft | **`collection_overview_helpers.py`** — see `references/COLLECTION_OVERVIEWS.md` |
 | Set up production monitoring | **`weave.Monitor`** |
 | Reproduce/relaunch a run | **`launch_helpers.relaunch_run()`** or CLI |
 | Launch a training job on GPU/K8s | **`launch_helpers.submit_code_artifact_job()`** |
@@ -1355,13 +1361,41 @@ from report_helpers import (
 )
 ```
 
+### Operational CLIs
+
+These scripts emit bounded evidence plus explicit sample/limit caveats:
+
+```bash
+python skills/wandb-primary/scripts/wandb_run_ops.py --help
+python skills/wandb-primary/scripts/artifact_helpers.py --help
+python skills/wandb-primary/scripts/workspace_ops.py --help
+python skills/wandb-primary/scripts/collection_overview_helpers.py --help
+python skills/wandb-primary/scripts/weave_agent_ops.py --help
+```
+
+- `wandb_run_ops.py` covers run counts, ranking, variants, config/cohort
+  comparisons, history/stability, Tables, Artifacts, checkpoints, project
+  snapshots, and workspace inventory.
+- `artifact_helpers.py` lists and filters Artifact versions without downloading
+  their contents.
+- `workspace_ops.py` performs guarded raw-spec workspace view mutations with
+  optimistic-concurrency retries and read-back verification.
+- `collection_overview_helpers.py` fetches bounded collection evidence and
+  creates a validated Overview draft from a JSON plan.
+- `weave_agent_ops.py` reads the separate Weave agent conversation/trace plane.
+
 ### Reference docs
 
 Read these as needed — they contain full API surfaces and recipes:
 
 - **`references/WANDB_CONCEPTS.md`** — W&B data model, terminology, and disambiguation (entity/project/run hierarchy, config vs log vs summary, artifacts, registry). Read this to understand what users are asking about.
 - **`references/WANDB_SDK.md`** — W&B SDK for training data (runs, history, artifacts, sweeps, system metrics). API call reference.
+- **`references/RUN_OPS.md`** — Canonical bounded CLI recipes for run/project analysis and their output/caveat contract.
+- **`references/RUNS_TABLE.md`** — Runs Table identity, filtering/grouping/sorting, visibility, pins, baselines, columns, notes, moves, export, and deletion.
 - **`references/RUN_LOGS.md`** — Reading run console logs via the `logLines` GraphQL connection (paginate or tail), multipart `output.log` layout and stitching, and crash/resume log gotchas.
+- **`references/ARTIFACT_OPS.md`** — Bounded Artifact inventory, version filtering, storage accounting, and selective file inspection.
+- **`references/ARTIFACTS_AND_REGISTRY.md`** — Asset versioning, lineage, Registry organization, promotion, and governance.
+- **`references/COLLECTION_OVERVIEWS.md`** — Evidence-grounded Artifact Collection Overview draft generation.
 - **`references/WEAVE_SDK.md`** — Weave SDK for GenAI traces (`client.get_calls()`, `CallsFilter`, `Query`, stats). Start here for Weave queries.
 - **`references/HYPOTHESIS_GENERATION.md`** — Four-phase synergistic hypothesis generation methodology. Read this for any task involving experiment analysis, anomaly diagnosis, "what went wrong?", or "what should I try next?".
 - **`references/REPORTS.md`** — W&B Report authoring/editing: runsets, structured filters, panels, media, columns, loading, and share links.

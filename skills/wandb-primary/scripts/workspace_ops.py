@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-PackageName: skills
 
-"""Public wrapper for launch_helpers.py."""
+"""Public wrapper for workspace_ops.py."""
 
-from launch_helpers_impl import *  # noqa: F403
-from launch_helpers_impl import _cli
+from workspace_ops_impl import *  # noqa: F403
+from workspace_ops_impl import main
 
 if __name__ == "__main__":
-    _cli()
+    main()

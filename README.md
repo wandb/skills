@@ -38,12 +38,34 @@ export WANDB_API_KEY=<your-key>
 
 > `npx skills` is a utility for installing skills into major coding agent CLIs. Use `--global` to install for all projects, or `--agent <name>` to target a specific agent. See the [npx skills docs](https://github.com/vercel-labs/skills) for more details.
 
+## Requirements
+
+The skill helpers are validated against these versions. Older SDKs expose some
+of the methods used here as unimplemented stubs, so pin at or above the floor
+rather than relying on whatever is already installed.
+
+| Package | Floor | Validated against |
+| --- | --- | --- |
+| Python | `>=3.13` | 3.13 |
+| `wandb` | `>=0.28.1` | 0.28.1 |
+| `wandb-workspaces` | `>=0.4.4` | 0.4.4 (pulled in by the `[workspaces]` extra) |
+| `weave` | `>=0.52.41` | 0.52.41 |
+
+The `workspaces` extra is required for the Workspaces helpers:
+
+```bash
+uv run --with 'wandb[workspaces]>=0.28.1' --with 'weave>=0.52.41' python your_script.py
+```
+
+`0.28.1` is a floor rather than a preference: at least one helper branches on
+behavior that changed after `0.28.0`, so `>=0.28.0` is not sufficient.
+
 ## Available Skills
 
 <!-- BEGIN SKILL TABLE -->
 | Skill                                    | Description                                                                                                                               | Status       |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| [`wandb-primary`](skills/wandb-primary/) | Primary W&B skill for broad, mixed-surface W&B project analysis and workflows across runs, Weave, Reports, Signal Builder, and Launch. | experimental |
+| [`wandb-primary`](skills/wandb-primary/) | Broad W&B project analysis and operations across runs, Artifacts, Registry, Weave, Reports, Workspaces, and Launch. | experimental |
 <!-- END SKILL TABLE -->
 
 ## Benchmarks

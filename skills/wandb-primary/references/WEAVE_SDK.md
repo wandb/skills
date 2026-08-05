@@ -222,3 +222,26 @@ from weave.trace_server.interface.query import Query
 # Stats endpoint
 from weave.trace_server.trace_server_interface import CallsQueryStatsReq
 ```
+
+## Agent conversations and agent traces
+
+The `weave/agents/...` conversation and agent-trace URLs are a separate data
+plane from ordinary calls. A conversation ID is not a call or trace ID, so
+`client.get_calls()` can correctly return no rows for it. Some Weave SDK
+versions expose agent methods as unimplemented stubs; use the bundled bounded
+CLI for this surface:
+
+```bash
+W=skills/wandb-primary/scripts/weave_agent_ops.py
+uv run --with weave python "$W" conversation CONVERSATION_ID \
+  --path ENTITY/PROJECT
+uv run --with weave python "$W" trace TRACE_ID \
+  --path ENTITY/PROJECT --feedback
+```
+
+The helper pages conversations at the server-enforced limit, clips long tool
+arguments/results by default, totals token counts, and prints a compact
+transcript. Use `--full` only when the complete payload is necessary; tool
+results may be very large. The helper currently reaches the Weave remote trace
+server's generic request surface, so treat failures after an SDK upgrade as a
+compatibility issue rather than falling back to an unbounded call scan.

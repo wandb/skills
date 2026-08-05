@@ -121,6 +121,13 @@ first_50 = runs[:50]    # slice to limit (lazy)
 
 **IMPORTANT**: Always slice runs — never `list()` all runs on large projects.
 
+`api.runs(..., lazy=True)` includes identity, state, tags, group, job type,
+timestamps, and user fields, but it does not include config or summary. Accessing
+`run.config` or `run.summary_metrics` hydrates that run and can cause one network
+request per row. For a broad projected scan, prefer
+`wandb_helpers.fetch_runs(...)`; if an existing lazy `Runs` object must be fully
+hydrated, use its thread-pooled `upgrade_to_full()` method before iterating.
+
 ### Run properties
 
 ```python
@@ -139,6 +146,7 @@ run.state        # "finished", "failed", "crashed", "running"
 run.created_at   # str: ISO timestamp
 run.tags         # list[str]
 run.lastHistoryStep  # int: last step number (-1 if no history)
+run.metadata         # dict | None; args and machine metadata, fetched lazily
 
 # Config (hyperparameters)
 run.config       # dict — logged at wandb.init()
@@ -217,13 +225,18 @@ rows = list(run.scan_history(
 ))
 df = pd.DataFrame(rows)
 
-# With caching (default True — skips re-download)
-rows = list(run.scan_history(keys=["loss"], use_cache=True)))
 ```
 
-**Behavior**: Downloads parquet history files, then reads locally. First call downloads the file; subsequent calls with use_cache=True read from local cache.
+**Behavior**: Returns full, unsampled rows. The SDK may use exported history
+files when available and otherwise paginates the history service.
 
 WARNING: scan_history() without keys= downloads ALL metric columns in the parquet file. On runs with 20K metrics, this can take 300+ seconds.
+
+`keys=` is an AND filter: a row is returned only when every requested key exists
+at that step. Mixing metric families that log at different steps can therefore
+produce zero rows without an error. Retry with one family or one metric before
+concluding data is absent. `keys=` and `stream=` are mutually exclusive; query
+system metrics with `history(stream="system")` and no keys.
 
 ### When to use which
 
@@ -232,7 +245,7 @@ WARNING: scan_history() without keys= downloads ALL metric columns in the parque
 | Quick plot / overview | `history(samples=500, keys=[...])` | Fast, sampled |
 | Dashboard summary | `history(samples=1000, keys=[...])` | Fast, sampled |
 | Exact values, any run size | `scan_history(keys=[...])` | Full iterator with fast exported-history path when available |
-| Repeated reads of same run | `scan_history(keys=[...])` | Reuses cached history |
+| Repeated reads of same run | `scan_history(keys=[...])` | Full iterator; local export caches may be reused by the SDK |
 | System metrics (GPU/CPU) | `history(stream="system")` | Separate stream |
 | Step range query | `scan_history(keys=[...], min_step=N, max_step=M)` | Built-in range |
 
