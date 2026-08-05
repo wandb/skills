@@ -197,6 +197,17 @@ runset = wr.Runset(
 Use concrete metric keys when the user names metrics. Use `metric_regex` when
 the user asks for a family of metrics.
 
+Do not invent component classes. Supported top-level blocks include `H1`, `H2`,
+`H3`, `P`, `MarkdownBlock`, `PanelGrid`, `CodeBlock`, `Image`,
+`HorizontalRule`, `CalloutBlock`, `BlockQuote`, `LatexBlock`,
+`TableOfContents`, `OrderedList`, `UnorderedList`, and `CheckedList`. Supported
+panels include `LinePlot`, `BarPlot`, `ScalarChart`, `ScatterPlot`,
+`ParallelCoordinatesPlot`, `ParameterImportancePlot`, `RunComparer`,
+`MediaBrowser`, `CodeComparer`, `MarkdownPanel`, `WeavePanelSummaryTable`,
+`WeavePanelArtifact`, `WeavePanelArtifactVersionedFile`, and `CustomChart`.
+Prefer a native panel; use `CustomChart` only when no native type can express the
+required visualization.
+
 ```python
 panels = [
     wr.LinePlot(title="Validation metrics", x="Step", metric_regex="val/.*"),
@@ -204,6 +215,30 @@ panels = [
     wr.ScalarChart(metric="accuracy", groupby_aggfunc="max"),
 ]
 ```
+
+Every panel accepts `layout=wr.Layout(x, y, w, h)` on a 24-unit grid. Use
+`w=24` for dense analytical plots and comparison/table panels; reserve smaller
+widths for compact scalar or simple bar panels. Pair wide panels with
+`Report(width="fluid")` when readability matters.
+
+Group by a run attribute or config value on the `Runset`, not on a panel:
+
+```python
+runset = wr.Runset(
+    entity=entity,
+    project=project,
+    groupby=[ws.Config("learning_rate")],
+)
+panel = wr.LinePlot(
+    x="Step",
+    y=["loss"],
+    groupby_aggfunc="mean",
+    groupby_rangefunc="stddev",
+)
+```
+
+`BarPlot.metrics` must contain bare summary-key strings. Do not wrap them in
+`SummaryMetric` objects.
 
 For media, use `wr.Image` for URL-backed static image blocks and
 `wr.MediaBrowser` for media logged to runs. Use `gallery_axis` for gallery
@@ -299,6 +334,72 @@ report.blocks.append(wr.P("Added programmatically."))
 report.save(draft=True)
 print(f"Updated report: {report.url}")
 ```
+
+`from_url()` does not reliably restore a saved report's width. Re-set
+`report.width` before saving an edit, and inspect
+`wr.Report.from_url(url, as_model=True).spec.width` when width is part of the
+requested change. Always load the existing report by URL; constructing a fresh
+`Report` mints a new ID instead of editing the old one.
+
+## Read and analyze a report
+
+A Report stores narrative blocks plus runset and panel definitions; it does not
+own the metric values. Walk `report.blocks` in order to recover the narrative,
+then resolve each runset to W&B runs before validating numeric claims.
+
+- `H1`, `H2`, `H3`, `P`, and `MarkdownBlock` expose text.
+- `PanelGrid` exposes runsets and panel definitions.
+- `BarPlot` and `ScalarChart` read summary values.
+- `LinePlot` needs bounded `run.history(keys=[...], samples=N)` calls.
+- System metrics require `stream="system"`.
+- Media, Table, and custom panels reference logged keys whose backing data must
+  be fetched separately.
+
+Display a `wandb.Table` logged under a summary key with:
+
+```python
+wr.WeavePanelSummaryTable(
+    table_name="predictions",
+    layout=wr.Layout(w=24, h=12),
+)
+```
+
+The panel shows the last logged table version for that summary key.
+
+## Save and verify
+
+Use the bundled helpers so every save is read back from W&B:
+
+```python
+import sys
+sys.path.insert(0, "skills/wandb-primary/scripts")
+
+from report_helpers import edit_report_verified, save_report_verified
+
+result = save_report_verified(report, draft=True, expect_text="Project analysis")
+assert result["verified"]
+```
+
+`draft=True` is the safe non-publishing default, but drafts are not editable in
+the report editor. Pass `draft=False` only when the user asked to publish or to
+create an editable published report. A successful `save()` call proves only that
+the request returned; the read-back must contain the expected blocks/text before
+reporting success.
+
+## Additional gotchas
+
+- Report titles containing `/` create slugs that `from_url()` cannot parse.
+- `wr.P()` renders literal text; use `wr.MarkdownBlock` for Markdown.
+- Use structured filters; dot-path filter strings can produce invalid specs.
+- `Runset.query` is a run-name regex, not a tags/config query language.
+- `OrderBy` accepts backend run fields or typed summary/config references. A
+  bare `summary:key` string can save successfully and still break rendering.
+- `wandb.init()` is unnecessary for report authoring and creates an unwanted
+  utility run.
+- `MediaBrowser` requires history-logged media. Summary-only media should be a
+  top-level `wr.Image` block.
+- A spec read-back does not prove a Vega/custom panel or persisted styling field
+  actually renders; prefer native panels and state this limitation.
 
 ## Share links
 

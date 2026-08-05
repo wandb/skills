@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 EXPECTED_SKILLS = {
+    "wandb-autoresearch",
+    "wandb-eval-tables",
     "wandb-primary",
 }
 

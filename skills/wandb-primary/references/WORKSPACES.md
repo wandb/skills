@@ -188,38 +188,12 @@ wr.LinePlot(
 (`"stddev"` = ±1σ, `"minmax"` = full range, `"samples"` = individual faded lines).
 `wr.BarPlot` and `wr.ScalarChart` accept both too.
 
-## Run visibility, pinning, and baselines
+## Runs Table state
 
-Per-run visibility and color go through `run_settings` (keys are run IDs):
-
-```python
-ws.RunsetSettings(
-    run_settings={
-        "abc123": ws.RunSettings(disabled=True),    # hide from all panels
-        "def456": ws.RunSettings(color="#00ff00"),  # visible, green
-    },
-)
-```
-
-Pinned runs stay visible regardless of filters (max 20) and may be cross-project:
-
-```python
-ws.RunsetSettings(
-    pinned_runs=[
-        "abc123",                                            # same project
-        "other-entity/other-project/def456",                 # cross-project
-        ws.RunRef("ghi789", entity="team", project="proj"),  # typed ref
-    ],
-)
-```
-
-Cross-project pins link back to the source run — nothing is imported. A **baseline
-run** is a reference point: it pins automatically, renders bolder/dashed in line plots,
-and enables delta columns in the runs table.
-
-```python
-ws.RunsetSettings(baseline_run="abc123")  # or ws.RunRef(...) for cross-project
-```
+Run visibility, pinning, baselines, delta direction, search, colors, and column
+layout are documented once in `RUNS_TABLE.md`. Use that reference for the exact
+SDK fields and raw-spec paths; use the guarded write helpers below to persist
+changes.
 
 ## Validate keys first
 
@@ -253,92 +227,72 @@ guessing.
 | Section grid layout | `ws.SectionLayoutSettings(columns=3, rows=2)` controls the panel grid; panels flow left-to-right, top-to-bottom. |
 | Don't mass-edit on ambiguity | If a target view/section is ambiguous, surface candidates before guessing. |
 
-## Raw-spec fallback for the default user workspace
+## Guarded raw-spec fallback for default workspaces
 
-`from_url` cannot load `?nw=nwuser<username>` views, so to edit a user's *default*
-workspace, fetch the raw view spec over GraphQL, mutate the dict, and upsert it.
-This needs no extra dependencies beyond `wandb`.
+`Workspace.from_url` cannot load a default `?nw=nwuser...` workspace. Use the
+bundled helpers instead of hand-writing `upsertView`:
+
+```bash
+W=skills/wandb-primary/scripts/workspace_ops.py
+uv run --with 'wandb[workspaces]' python "$W" --help
+uv run --with 'wandb[workspaces]' python "$W" find-view \
+  --view-url 'https://wandb.ai/ENTITY/PROJECT/?nw=TOKEN'
+uv run --with 'wandb[workspaces]' python "$W" add-panel \
+  --view-url 'https://wandb.ai/ENTITY/PROJECT/?nw=TOKEN' \
+  --section Loss --create-section --panel-type line \
+  --title 'Training loss' --metric train/loss --x Step
+```
+
+`workspace_ops.py` builds valid panel models and routes every write through
+`workspace_write.mutate_view_with_retry`. That engine:
+
+1. fetches the narrow target view and its `updatedAt` value;
+2. applies a callback to fresh JSON state;
+3. sends a field-minimal `upsertView` guarded by `lastUpdatedAt`;
+4. re-fetches and reapplies on a bounded conflict; and
+5. reads back the saved spec for verification.
+
+Import the lower-level helper only when the CLI cannot express the requested
+mutation:
 
 ```python
-import json
+import sys
+sys.path.insert(0, "skills/wandb-primary/scripts")
+
 import wandb
+from workspace_write import fetch_view, mutate_view_with_retry, read_back_spec
 
+api = wandb.Api(timeout=60)
+def mutate(spec):
+    spec["section"]["panelBankConfig"]["sections"][0]["isOpen"] = True
 
-def execute_graphql(api, query, variables):
-    from wandb_graphql.language import parser as gql_parser
-    return api.client.execute(gql_parser.parse(query), variable_values=variables)
-
-
-entity = os.environ["WANDB_ENTITY"]
-project = os.environ["WANDB_PROJECT"]
-token = "nwuser<username>"  # the ?nw= value from the workspace URL
-api = wandb.Api(timeout=120)
-
-# 1. Fetch the raw spec via allViews. Default workspace backend name is
-#    nw-<token>-w; a saved view is nw-<id>-v.
-list_q = """query ($e:String!,$p:String!){
-  project(entityName:$e,name:$p){ allViews(viewType:"project-view",first:100){
-    edges{ node{ id name displayName spec } } } } }"""
-nodes = [
-    e["node"]
-    for e in execute_graphql(api, list_q, {"e": entity, "p": project})[
-        "project"
-    ]["allViews"]["edges"]
-]
-node = next(n for n in nodes if n["name"] in (f"nw-{token}-w", f"nw-{token}-v"))
-spec = json.loads(node["spec"])
-
-# 2. Build a well-formed panel dict via the SDK, then mutate the spec directly -
-#    don't round-trip through Workspace._from_model.
-panel = (
-    wr.LinePlot(title="Loss x2", x="Step", y=[], custom_expressions=["${train/loss} * 2"])
-    ._to_model()
-    .model_dump(by_alias=True, exclude_none=True)
+result, _ = mutate_view_with_retry(
+    api,
+    entity="ENTITY",
+    project="PROJECT",
+    view_url="https://wandb.ai/ENTITY/PROJECT/?nw=TOKEN",
+    view_token=None,
+    display_contains=None,
+    mutate=mutate,
 )
-panel.pop("layout", None)
-panel["__id__"] = wandb.util.generate_id(11)
-
-sections = spec["section"]["panelBankConfig"]["sections"]
-section = next((s for s in sections if (s.get("name") or "").lower() == "loss"), None)
-if section is None:
-    section = {"name": "Loss", "panels": [], "isOpen": True}
-    sections.append(section)
-section.setdefault("panels", []).append(panel)
-
-# 3. Upsert the mutated spec.
-mutation = """mutation ($id:ID,$e:String,$p:String,$t:String,$n:String,$dn:String,$d:String,$s:String){
-  upsertView(input:{id:$id,entityName:$e,projectName:$p,name:$n,displayName:$dn,description:$d,type:$t,spec:$s,createdUsing:WANDB_SDK}){
-    view{ id name displayName } inserted } }"""
-execute_graphql(api, mutation, {
-    "id": node["id"], "e": entity, "p": project,
-    "n": node["name"], "dn": node["displayName"],
-    "d": "", "t": "project-view",
-    "s": json.dumps(spec, separators=(",", ":")),
-})
-print(f"Updated workspace: https://wandb.ai/{entity}/{project}/?nw={token}")
+verified = read_back_spec(api, "ENTITY", "PROJECT", result["view"]["name"])
+assert verified["section"]["panelBankConfig"]["sections"][0]["isOpen"] is True
 ```
 
-## Listing all views in a project
+Omitting display name and description from a spec-only write prevents a
+concurrent rename or description edit from being overwritten. Do not call the
+raw mutation directly; it loses the optimistic-concurrency guard.
 
-To enumerate a project's workspace views (to find a saved view's `nw` id, or to
-distinguish personal from saved views), query `allViews`. Reuses the `execute_graphql`
-helper, `api`, `entity`, and `project` from the raw-spec section above.
+## Listing views
 
-```python
-list_q = """query ($e:String!,$p:String!){
-  project(entityName:$e,name:$p){ allViews(viewType:"project-view",first:200){
-    edges{ node{ id name displayName } } } } }"""
-for e in execute_graphql(api, list_q, {"e": entity, "p": project})["project"]["allViews"]["edges"]:
-    node = e["node"]
-    is_personal = "nwuser" in node["name"]
-    print(f"{'[personal]' if is_personal else '[saved]   '} {node['displayName']}  ({node['name']})")
+Use the bounded helper so large view specs are not fetched unnecessarily:
+
+```bash
+W=skills/wandb-primary/scripts/workspace_ops.py
+uv run --with 'wandb[workspaces]' python "$W" find-view \
+  --path ENTITY/PROJECT --limit 100
 ```
 
-Backend view names encode the kind: a personal workspace is `nw-<token>-w` (the
-`?nw=nwuser<username>` URL), a saved view is `nw-<id>-v` (the `?nw=<id>` URL).
-
-## Final reply
-
-After a mutation, give the workspace URL **and** a one-line summary of what changed
-(section, panel title, expression/metric, whether a section was created). A bare URL
-buries the change.
+A personal workspace has backend name `nw-<token>-w`; a saved view uses
+`nw-<id>-v`. Narrow by URL token or display-name substring before loading a full
+spec. After any mutation, re-fetch the target and assert the exact field changed.

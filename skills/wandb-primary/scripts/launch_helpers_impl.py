@@ -68,12 +68,17 @@ def parse_run_url(url):
 
 
 def _gql_query(api, query_str, variables=None):
-    """Execute a GQL query using wandb_gql (preferred) or raw HTTP fallback.
+    """Execute a GraphQL query through the SDK or a raw HTTP fallback.
 
-    The wandb SDK vendors wandb_gql for query parsing. If that import fails
-    (for example, in a minimal environment), fall back to raw HTTP POST to the GraphQL
-    endpoint, which accepts query strings directly.
+    Prefer the service API because it accepts a raw query string and follows the
+    SDK's configured authentication and base URL. Older SDKs may expose only the
+    parsed-query client. A minimal installation can still use the HTTP fallback.
     """
+    service_api = getattr(api, "_service_api", None)
+    execute = getattr(service_api, "execute_graphql", None)
+    if callable(execute):
+        return execute(query_str, variables or {})
+
     try:
         from wandb_gql import gql
         parsed = gql(query_str)
@@ -84,7 +89,7 @@ def _gql_query(api, query_str, variables=None):
     # Fallback: raw HTTP request
     import requests
     base_url = os.environ.get("WANDB_BASE_URL", "https://api.wandb.ai")
-    api_key = os.environ.get("WANDB_API_KEY", "")
+    api_key = getattr(api, "api_key", None) or os.environ.get("WANDB_API_KEY", "")
     resp = requests.post(
         f"{base_url}/graphql",
         json={"query": query_str, "variables": variables or {}},
@@ -720,8 +725,6 @@ def download_code_artifact(job_artifact_path):
         Dict with keys: code_dir, files, entrypoint, base_image, source_artifact_name,
         entity, project, job_name.
     """
-    from wandb_gql import gql
-
     api = wandb.Api()
 
     # Download job metadata
@@ -737,15 +740,15 @@ def download_code_artifact(job_artifact_path):
 
     # Resolve source artifact ID to a downloadable artifact
     artifact_id = source_ref.replace("wandb-artifact://_id/", "")
-    query = gql("""
+    query = """
     query GetArtifact($id: ID!) {
         artifact(id: $id) {
             artifactSequence { name project { name entityName } }
             aliases { alias }
         }
     }
-    """)
-    result = api.client.execute(query, variable_values={"id": artifact_id})
+    """
+    result = _gql_query(api, query, {"id": artifact_id})
     art_data = result["artifact"]
     seq = art_data["artifactSequence"]
     entity = seq["project"]["entityName"]

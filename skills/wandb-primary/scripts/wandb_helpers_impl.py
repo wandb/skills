@@ -9,7 +9,8 @@ Optimized for projects of any size, including large projects (10K+ runs,
 
 Key features:
 - fetch_runs: Direct GraphQL with summaryMetrics field selection (15-25x
-  faster than SDK iteration on large projects)
+  faster than SDK iteration on large projects), cohort metadata, and optional
+  page-flushed JSONL checkpoints
 - get_api: Uses timeout=120 to prevent timeouts on large projects
 - probe_project: Discovers project scale and available metrics
 - runs_to_dataframe: Selective config/metric access
@@ -23,6 +24,7 @@ Usage:
     sys.path.insert(0, "skills/wandb-primary/scripts")
     from wandb_helpers import (
         get_api,             # Create API with large-project-safe timeout
+        fetch_runs,          # Projected rows with cohort metadata and optional checkpoints
         probe_project,       # Discover project scale, metrics, config keys, artifacts
         runs_to_dataframe,   # Convert runs to a clean pandas DataFrame
         diagnose_run,        # Quick diagnostic summary of a training run
@@ -221,8 +223,12 @@ query Runs($project: String!, $entity: String!, $cursor: String,
                 node {
                     id
                     name
+                    displayName
                     state
                     createdAt
+                    group
+                    jobType
+                    tags
                     summaryMetrics(keys: %KEYS%)
                     config
                 }
@@ -247,6 +253,7 @@ def fetch_runs(
     order: str = "-created_at",
     config_keys: list[str] | None = None,
     per_page: int = 50,
+    jsonl_path: str | None = None,
 ) -> list[dict[str, Any]]:
     """Fetch runs using direct GraphQL with summaryMetrics field selection.
 
@@ -260,20 +267,30 @@ def fetch_runs(
         Standard SDK:  ~600ms/run (12s for 20 runs)
         This function: ~34ms/run  (0.67s for 20 runs) — 17x faster
 
+    This is the tool for a comprehensive overview, not just targeted lookups:
+    pass the full list of metric_keys AND config_keys you want in one call —
+    projection keeps even a broad multi-metric, fast multi-config pull, and
+    every row also carries tags/group/job_type for cohort grouping. Prefer it
+    over a raw api.runs() loop even for "grab everything" passes.
+
     Args:
         api: wandb.Api instance (use get_api()).
         path: "entity/project" string.
-        metric_keys: Summary metric keys to fetch. REQUIRED.
+        metric_keys: Summary metric keys to fetch (pass all you need — many is fine). REQUIRED.
         limit: Max runs to return.
         filters: W&B filter dict (e.g., {"state": "finished"}).
         order: Sort order (e.g., "-created_at", "+summary_metrics.loss").
         config_keys: Specific config keys to extract. None = skip config.
         per_page: Runs per GraphQL page (default 50).
+        jsonl_path: When set, append each fetched row as JSONL and flush after
+            every page so a shell timeout (exit 124) leaves partial output on disk.
 
     Returns:
-        List of flat dicts with run metadata + selected metrics + selected config.
+        List of flat dicts with run metadata (id, name, display_name, state,
+        created_at, group, job_type, tags) + selected metrics + selected config.
     """
     import json as _json
+    import os as _os
 
     import requests
 
@@ -292,69 +309,83 @@ def fetch_runs(
     rows: list[dict[str, Any]] = []
     cursor = None
     remaining = limit
-
-    while remaining > 0:
-        page_size = min(per_page, remaining)
-        variables: dict[str, Any] = {
-            "project": project,
-            "entity": entity,
-            "perPage": page_size,
-            "order": order,
-            "filters": filter_str,
-        }
-        if cursor:
-            variables["cursor"] = cursor
-
-        resp = requests.post(
-            "https://api.wandb.ai/graphql",
-            headers={
-                "Authorization": f"Bearer {api.api_key}",
-                "Content-Type": "application/json",
-            },
-            json={"query": query, "variables": variables},
-            timeout=getattr(api, "_timeout", 60),
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-        if "errors" in data:
-            raise RuntimeError(f"GraphQL errors: {data['errors']}")
-
-        runs_data = data.get("data", {}).get("project", {}).get("runs", {})
-        edges = runs_data.get("edges", [])
-        page_info = runs_data.get("pageInfo", {})
-
-        for edge in edges:
-            node = edge["node"]
-            summary = _json.loads(node.get("summaryMetrics") or "{}")
-
-            row: dict[str, Any] = {
-                "id": node["id"],
-                "name": node["name"],
-                "state": node["state"],
-                "created_at": node["createdAt"],
+    base_url = _os.environ.get("WANDB_BASE_URL", "https://api.wandb.ai").rstrip("/")
+    checkpoint = open(jsonl_path, "a", encoding="utf-8") if jsonl_path else None
+    try:
+        while remaining > 0:
+            page_size = min(per_page, remaining)
+            variables: dict[str, Any] = {
+                "project": project,
+                "entity": entity,
+                "perPage": page_size,
+                "order": order,
+                "filters": filter_str,
             }
+            if cursor:
+                variables["cursor"] = cursor
 
-            # Config — selective
-            if config_keys is not None:
-                config = _json.loads(node.get("config") or "{}")
-                for k in config_keys:
-                    row[f"config.{k}"] = (
-                        config.get(k, {}).get("value")
-                        if isinstance(config.get(k), dict)
-                        else config.get(k)
-                    )
+            resp = requests.post(
+                f"{base_url}/graphql",
+                headers={
+                    "Authorization": f"Bearer {api.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"query": query, "variables": variables},
+                timeout=getattr(api, "_timeout", 60),
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-            # Summary metrics — already filtered server-side
-            for key in metric_keys:
-                row[key] = summary.get(key)
+            if "errors" in data:
+                raise RuntimeError(f"GraphQL errors: {data['errors']}")
 
-            rows.append(row)
+            runs_data = data.get("data", {}).get("project", {}).get("runs", {})
+            edges = runs_data.get("edges", [])
+            page_info = runs_data.get("pageInfo", {})
 
-        remaining -= len(edges)
-        if not page_info.get("hasNextPage") or not edges:
-            break
-        cursor = page_info.get("endCursor")
+            for edge in edges:
+                node = edge["node"]
+                summary = _json.loads(node.get("summaryMetrics") or "{}")
+
+                row: dict[str, Any] = {
+                    "id": node["id"],
+                    "name": node["name"],
+                    "display_name": node.get("displayName"),
+                    "state": node["state"],
+                    "created_at": node["createdAt"],
+                    "group": node.get("group"),
+                    "job_type": node.get("jobType"),
+                    "tags": node.get("tags") or [],
+                }
+
+                # Config — selective
+                if config_keys is not None:
+                    config = _json.loads(node.get("config") or "{}")
+                    for k in config_keys:
+                        row[f"config.{k}"] = (
+                            config.get(k, {}).get("value")
+                            if isinstance(config.get(k), dict)
+                            else config.get(k)
+                        )
+
+                # Summary metrics — already filtered server-side
+                for key in metric_keys:
+                    row[key] = summary.get(key)
+
+                rows.append(row)
+                if checkpoint is not None:
+                    checkpoint.write(_json.dumps(row, default=str) + "\n")
+
+            if checkpoint is not None:
+                checkpoint.flush()
+
+            remaining -= len(edges)
+            if not page_info.get("hasNextPage") or not edges:
+                break
+            cursor = page_info.get("endCursor")
+    finally:
+        if checkpoint is not None:
+            checkpoint.close()
 
     return rows[:limit]
 

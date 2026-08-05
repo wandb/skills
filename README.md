@@ -41,9 +41,11 @@ export WANDB_API_KEY=<your-key>
 ## Available Skills
 
 <!-- BEGIN SKILL TABLE -->
-| Skill                                    | Description                                                                                                                               | Status       |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| [`wandb-primary`](skills/wandb-primary/) | Primary W&B skill for broad, mixed-surface W&B project analysis and workflows across runs, Weave, Reports, Signal Builder, and Launch. | experimental |
+| Skill                                                | Description                                                                                                                   | Status       |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| [`wandb-primary`](skills/wandb-primary/)             | Broad W&B project analysis and operations across runs, Artifacts, Registry, Weave, Reports, Workspaces, and Launch.           | experimental |
+| [`wandb-eval-tables`](skills/wandb-eval-tables/)     | Non-destructive conversion of W&B Table artifacts into bounded, verified EvalTable previews.                                 | experimental |
+| [`wandb-autoresearch`](skills/wandb-autoresearch/)   | Bounded training research through W&B Launch, including readiness checks, serial trials, comparison, and resumable state.     | experimental |
 <!-- END SKILL TABLE -->
 
 ## Benchmarks
