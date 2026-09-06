@@ -38,6 +38,17 @@ export WANDB_API_KEY=<your-key>
 
 > `npx skills` is a utility for installing skills into major coding agent CLIs. Use `--global` to install for all projects, or `--agent <name>` to target a specific agent. See the [npx skills docs](https://github.com/vercel-labs/skills) for more details.
 
+### Install as a Codex plugin
+
+Add this repository as a Codex plugin marketplace:
+
+```bash
+codex plugin marketplace add wandb/skills
+```
+
+Restart the ChatGPT desktop app, open the Plugins Directory, select the
+Weights & Biases Skills marketplace, and install `wandb-skills`.
+
 ## Requirements
 
 The skill helpers are validated against these versions. Older SDKs expose some
