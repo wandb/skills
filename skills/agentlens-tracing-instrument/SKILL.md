@@ -7,7 +7,7 @@ description: Add Forge AgentLens tracing to Python or TypeScript agents. Use whe
 
 Forge exports explicit agent spans through a private OTel provider. It does
 not auto-instrument frameworks, replace the global provider, or export that
-provider's spans. Use `weave-instrument` when the user requests the Weave SDK.
+provider's spans.
 
 Read the [Python](references/python.md) or [TypeScript](references/typescript.md)
 reference. Check installed exports and pin a verified release/source revision;

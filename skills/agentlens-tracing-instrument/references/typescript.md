@@ -4,6 +4,8 @@ ESM package `@coreweave/forge-sdk`; Node `^18.19.0 || >=20.6.0`.
 Await init once outside request scopes. Options `apiKey`/`baseUrl` override
 `WANDB_API_KEY`, `WF_TRACE_SERVER_URL`, and `WANDB_BASE_URL`; no `.netrc` fallback.
 Every request needs `runIsolated`; tracing outside it throws.
+This SDK revision has no `Symbol.dispose`/`Symbol.asyncDispose`, so `using`
+cannot replace explicit `end()` calls. Record errors separately from cleanup.
 
 Synthetic example (no model call), for an intended destination or local exporter:
 
