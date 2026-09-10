@@ -62,12 +62,18 @@ behavior that changed after `0.28.0`, so `>=0.28.0` is not sufficient.
 
 ## Available Skills
 
+Select a skill with `npx skills add wandb/skills --skill <name>`. Each skill
+specifies its own SDK requirements; installation supplies instructions, not
+application dependencies or credentials. These bundles are exported from Core.
+
 <!-- BEGIN SKILL TABLE -->
 | Skill                                    | Description                                                                                                                               | Status       |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [`wandb-primary`](skills/wandb-primary/) | Broad W&B project analysis and operations across runs, Artifacts, Registry, Weave, Reports, Workspaces, and Launch. | experimental |
 | [`wandb-eval-tables`](skills/wandb-eval-tables/) | Non-destructive conversion of W&B Table artifacts into bounded, verified EvalTable previews. | experimental |
 | [`wandb-autoresearch`](skills/wandb-autoresearch/) | Bounded training research through W&B Launch, including readiness checks, serial trials, comparison, and resumable state. | experimental |
+| [`weave-instrument`](skills/weave-instrument/) | Weave SDK tracing for Python and TypeScript agents and LLM applications. | experimental |
+| [`agentlens-tracing-instrument`](skills/agentlens-tracing-instrument/) | Forge AgentLens tracing for Python and TypeScript agents. | experimental |
 <!-- END SKILL TABLE -->
 
 ## Benchmarks
