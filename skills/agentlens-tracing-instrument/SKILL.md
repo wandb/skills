@@ -10,8 +10,7 @@ not auto-instrument frameworks, replace the global provider, or export that
 provider's spans.
 
 Read the [Python](references/python.md) or [TypeScript](references/typescript.md)
-reference. Check installed exports and pin a verified release/source revision;
-these references target Forge `4c222375bcb8f3c0d31b299b76f52e09531d0189`.
+reference. Verify the APIs against the installed SDK version.
 
 ## Instrument
 
@@ -28,7 +27,9 @@ these references target Forge `4c222375bcb8f3c0d31b299b76f52e09531d0189`.
 
 ## Verify
 
-Run application checks and exercise success, failure, and overlapping requests.
+Run focused application checks for success, failure, and overlapping requests.
+If the full suite requires CI, browsers, or unavailable services, run feasible
+local checks and report the skipped coverage.
 Assert parentage, tool-call IDs, and `gen_ai.operation.name` values
 `invoke_agent`, `chat`, and `execute_tool` using Forge's provider or a local
 OTLP receiver. Confirm backend arrival when authorized credentials are available;

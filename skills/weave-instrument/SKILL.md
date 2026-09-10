@@ -32,7 +32,9 @@ Close spans on failure and isolate concurrent conversations.
 
 ## Verify
 
-Run the application's tests and a minimal traced path. Check parentage and
+Run relevant application tests and a minimal traced path. If the full suite
+requires CI, browsers, or unavailable services, run focused local checks
+covering success and failure, and report the skipped coverage. Check parentage and
 `gen_ai.operation.name`: `invoke_agent` for turns/subagents, `chat` for LLMs,
 `execute_tool` for tools. Agent-shaped traces belong in Agents; flat calls in
 Calls. Confirm backend arrival when credentials are available; an init banner

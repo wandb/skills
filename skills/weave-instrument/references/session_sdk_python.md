@@ -12,8 +12,8 @@ weave.init("entity/project")
 
 with weave.start_session(agent_name="weather-bot") as session:
     with session.start_turn(user_message="weather in Tokyo?") as turn:   # one Turn per user input
-        with turn.llm(model="gpt-4o", provider_name="openai") as llm:
-            resp = client.chat.completions.create(model="gpt-4o", messages=messages)
+        with turn.llm(model="gpt-4o-mini", provider_name="openai") as llm:
+            resp = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
             llm.output(resp.choices[0].message.content or "")
             llm.usage = Usage(input_tokens=resp.usage.prompt_tokens,
                               output_tokens=resp.usage.completion_tokens)
