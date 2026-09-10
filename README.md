@@ -62,6 +62,30 @@ behavior that changed after `0.28.0`, so `>=0.28.0` is not sufficient.
 
 ## Available Skills
 
+Agent tracing is also available through:
+
+- [`weave-instrument`](skills/weave-instrument/): Weave SDK instrumentation for
+  Python and TypeScript/Node, with explicit agent spans or framework auto-tracing.
+- [`agentlens-tracing-instrument`](skills/agentlens-tracing-instrument/): explicit
+  AgentLens tracing through the CoreWeave Forge SDK for Python and TypeScript/Node.
+
+Install either by name, or select them in the interactive installer above:
+
+```bash
+npx skills add wandb/skills --skill weave-instrument
+npx skills add wandb/skills --skill agentlens-tracing-instrument
+```
+
+These tracing skills specify their own language and SDK requirements. The Forge
+variant does not require the full Weave or W&B SDK. Installing a skill installs
+instructions and references; follow the selected skill to add SDK dependencies
+and configure credentials in the application.
+
+The Weave bundle is sourced from `wandb/weave` revision
+`c003a2f4e425cde178ebcc4a2a3dbf8534fba1d3`; the Forge reference targets
+`coreweave/forge-sdk` revision `4c222375bcb8f3c0d31b299b76f52e09531d0189`.
+The bundles are maintained in Core and exported here as complete directories.
+
 <!-- BEGIN SKILL TABLE -->
 | Skill                                    | Description                                                                                                                               | Status       |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
