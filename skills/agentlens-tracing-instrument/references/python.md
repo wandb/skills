@@ -1,15 +1,9 @@
 # Python
 
-Package: `coreweave-forge-sdk`; Python >=3.9. Import
-`from coreweave.forge.agentlens import tracing`.
-
-Initialize with `tracing.init("entity/project")`, or explicit keyword arguments
-`api_key` and `base_url`. Environment routing uses `WANDB_API_KEY`,
-`WF_TRACE_SERVER_URL`, and `WANDB_BASE_URL`; Python also supports a `.netrc`
-API-key fallback. Never inspect or print the credential value.
-
-This synthetic example exercises the API without calling an LLM provider.
-Run only against an intended destination or a local test exporter:
+`coreweave-forge-sdk` supports Python >=3.9. `tracing.init("entity/project")`
+accepts `api_key`/`base_url`; defaults use `WANDB_API_KEY`, `WF_TRACE_SERVER_URL`,
+`WANDB_BASE_URL`, and a `.netrc` key fallback. This synthetic example makes no
+model call; use an intended destination or local exporter:
 
 ```python
 from coreweave.forge.agentlens import tracing
@@ -28,39 +22,20 @@ finally:
     tracing.shutdown()
 ```
 
-In application code, wrap the existing model/tool call where the synthetic
-output is assigned. Context managers close spans and record exceptions while
-allowing the original exception to propagate. `start_*` factories start spans
-immediately; entering their returned context manager does not start twice.
-Direct `Turn`, `LLM`, `Tool`, and `SubAgent` construction does not emit until
-`start()` or context-manager entry. Prefer the factories for live tracing.
+Replace synthetic results with application calls. Context managers record
+exceptions and close spans without swallowing them. Factories start immediately;
+direct model construction waits for `start()` or context entry.
 
-Use `tracing.Message` for messages and `tracing.Usage` for usage; inspect their
-fields in the installed SDK when mapping a provider response. Python uses
-snake_case, including `input_messages`, `output_messages`, `provider_name`,
-`input_tokens`, and `output_tokens`. Tool `arguments` and `result` are strings;
-serialize structured values as JSON. A Tool's provider call ID is
-`tool_call_id`, not its span ID. Use the same ID in `tracing.ToolCallPart`
-inside `Message.assistant(tool_calls=[...])` and in
-`Message.tool_result(call_id, output)` when recording the next model input.
+Use `tracing.Message`, `tracing.Usage`, snake_case message/usage fields, and
+JSON strings for tool arguments/results. Match `tool_call_id` to
+`ToolCallPart.id` and `Message.tool_result(call_id, output)`.
 
-Use `turn.start_subagent(name="researcher")` as a context manager, then its
-`start_llm` and `start_tool` methods for delegated work. Keep children within
-their owner's lifetime. Python uses context variables; create a Conversation
-inside each independent request/task and explicitly propagate context for
-thread/process handoffs as required by the application. Do not share one
-ambient conversation across unrelated concurrent requests. When subagents
-overlap in one context, pass `set_current=False` to `start_subagent` and use
-each subagent's explicit child factories. Otherwise out-of-order completion
-can corrupt the ambient context stack.
+Create a Conversation per request/task; propagate context across thread/process
+handoffs. For overlapping subagents use `start_subagent(name=..., set_current=False)`
+and its child factories to avoid out-of-order context resets.
 
-Set `include_content=False` on Conversation to omit messages, tool arguments,
-results, reasoning, and media. The SDK does not redact arbitrary PII.
-`llm.attach_media(uri=..., modality="image")` records a media URI.
-
-`tracing.force_flush()` flushes pending spans; `tracing.shutdown()` flushes and
-closes the worker and is registered with `atexit`. Reinitializing reroutes new
-spans, including new children of older parents. The previous session survives
-only until the next init/shutdown, so finish it before either operation.
-
-Source: [Forge tracing implementation](https://github.com/coreweave/forge-sdk/tree/4c222375bcb8f3c0d31b299b76f52e09531d0189/src/coreweave/forge/agentlens/tracing).
+Conversation `include_content=False` omits messages, tool data, reasoning, and
+media; custom attributes/errors still require care. Prefer media URIs with
+`llm.attach_media(uri=..., modality="image")` over large inline blobs.
+`force_flush()` flushes; `shutdown()` closes the worker. Finish active spans
+before reinitializing: new children would use the new project's exporter.
