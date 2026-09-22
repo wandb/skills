@@ -16,3 +16,7 @@ precedence over the framework's native name and integration default.
 
 If traces are absent, check runtime auth, init order, provider ownership,
 and the language-specific cases above before adding more instrumentation.
+
+Apply [trace fidelity](trace_fidelity.md) to auto-generated spans too. If the
+integration cannot preserve the required lifecycle or payloads, use explicit
+spans at those boundaries without duplicating existing capture.

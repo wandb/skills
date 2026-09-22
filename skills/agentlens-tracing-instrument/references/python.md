@@ -1,5 +1,7 @@
 # Python
 
+Apply [trace fidelity](trace_fidelity.md) when replacing the synthetic calls below.
+
 `coreweave-forge-sdk` supports Python >=3.9. `tracing.init("entity/project")`
 accepts `api_key`/`base_url`; defaults use `WANDB_API_KEY`, `WF_TRACE_SERVER_URL`,
 `WANDB_BASE_URL`, and a `.netrc` key fallback. This synthetic example makes no
@@ -30,8 +32,9 @@ Use `tracing.Message`, `tracing.Usage`, snake_case message/usage fields, and
 JSON strings for tool arguments/results. Match `tool_call_id` to
 `ToolCallPart.id` and `Message.tool_result(call_id, output)`.
 
-Create a Conversation per request/task; propagate context across thread/process
-handoffs. For overlapping subagents use `start_subagent(name=..., set_current=False)`
+Create a Conversation per application conversation/task, not per internal
+continuation request. Preserve its identity and propagate context across
+thread/process handoffs. For overlapping subagents use `start_subagent(name=..., set_current=False)`
 and its child factories to avoid out-of-order context resets.
 
 Conversation `include_content=False` omits messages, tool data, reasoning, and

@@ -1,5 +1,7 @@
 # TypeScript / Node
 
+Apply [trace fidelity](trace_fidelity.md) when replacing the synthetic calls below.
+
 ESM package `@coreweave/forge-sdk`; Node `^18.19.0 || >=20.6.0`.
 Await init once outside request scopes. Options `apiKey`/`baseUrl` override
 `WANDB_API_KEY`, `WF_TRACE_SERVER_URL`, and `WANDB_BASE_URL`; no `.netrc` fallback.

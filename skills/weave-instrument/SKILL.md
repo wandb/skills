@@ -5,10 +5,32 @@ description: Add Weave tracing to Python or TypeScript agents and LLM applicatio
 
 # Weave instrumentation
 
+Complete the [login check](#check-login-first) before editing or initializing.
+
 Inspect the application's dependencies, agent boundaries, and existing OTel
 provider. Confirm `entity/project` and runtime credentials before sending data;
-never read, print, or commit API keys. Initialize once at startup with
+never read, print, or commit API keys. Read
+[trace fidelity](references/trace_fidelity.md) before changing any instrumentation
+path. Initialize once at startup with
 `weave.init("entity/project")` in Python or `await weave.init(...)` in Node.
+
+## Check login first
+
+Before editing code or initializing tracing, verify the existing W&B login for
+the target deployment with a noninteractive, read-only identity request through
+the configured SDK or connector. Use credentials in place; never print, copy,
+or inspect secret values. Do not call `login` or tracing `init` as a login probe.
+
+- If no valid login exists, **stop and return**. Ask the user to log in manually
+  with `wandb login --verify` for the target deployment; include the
+  [W&B login documentation](https://docs.wandb.ai/models/ref/cli/wandb-login).
+  Do not launch login, request a key in chat, or create credentials for them.
+- If the check is unavailable or fails because of connectivity or permissions,
+  report login/access as unverified and stop; do not assume credentials are invalid.
+- A browser login does not establish SDK authentication. Confirm the application
+  runtime can use its own configured credentials and access `entity/project`.
+  Node/Forge runtimes without a `.netrc` fallback need credentials configured
+  by the user through their runtime secret mechanism.
 
 ## Choose the mechanism
 
@@ -30,11 +52,24 @@ covers delegation. Record actual output/usage and preserve provider tool-call
 IDs. Keep return values, exceptions, retries, and cancellation unchanged.
 Close spans on failure and isolate concurrent conversations.
 
+## Implement incrementally
+
+Add one traced path at a time: a model call, its tool loop, then delegation or
+concurrency where applicable. After each change, run the path and follow
+[read-back verification](references/read_back.md). Compare emitted and stored
+spans with the actual execution before extending the instrumentation.
+
+Fix mismatches and rerun the same check before continuing. Empty results,
+failed queries, and unavailable checks are unverified, not passes. Stop at
+that boundary and report what the user must do to unblock verification.
+
 ## Verify
 
-Run relevant application tests and a minimal traced path. If the full suite
-requires CI, browsers, or unavailable services, run focused local checks
-covering success and failure, and report the skipped coverage. Check parentage and
+Run relevant application tests and the
+[conformance check](references/trace_fidelity.md#conformance-check) for the paths
+you instrumented. If the full suite requires CI, browsers, or unavailable
+services, run focused local checks covering success and failure, and report the
+skipped coverage. Check parentage and
 `gen_ai.operation.name`: `invoke_agent` for turns/subagents, `chat` for LLMs,
 `execute_tool` for tools. Agent-shaped traces belong in Agents; flat calls in
 Calls. Confirm backend arrival when credentials are available; an init banner
