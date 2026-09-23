@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aria Chat"
+  short_description: "Delegate W&B analysis to the WB Agent"
+  default_prompt: "Use $aria-chat to ask the W&B agent to analyze a run or project, wait for its response, and answer any clarifying questions or network-access requests it raises."

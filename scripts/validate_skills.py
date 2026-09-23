@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 EXPECTED_SKILLS = {
+    "aria-chat",
     "wandb-autoresearch",
     "wandb-eval-tables",
     "wandb-primary",
@@ -85,7 +86,14 @@ def main() -> int:
         if path.suffix in {".md", ".py"}:
             text = path.read_text(encoding="utf-8", errors="ignore")
             for pattern in SECRET_PATTERNS:
-                if pattern.search(text):
+                # Allow aria-chat's bundled helper name, but no other internal names.
+                if any(
+                    not (
+                        path.relative_to(skills_root).parts[0] == "aria-chat"
+                        and match.group(0) == "wbagent"
+                    )
+                    for match in pattern.finditer(text)
+                ):
                     offenders.append(
                         f"{path.relative_to(root)}: matched {pattern.pattern}"
                     )
