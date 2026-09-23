@@ -9,8 +9,9 @@
 - Flush once the test path completes. For local checks, inspect an in-memory
   exporter or local OTLP receiver; do not change the running service's shutdown
   behavior to force delivery.
-- Query the same project and trace. Compare parentage, messages, usage, tool
-  attempts, and timing using [trace fidelity](trace_fidelity.md).
+- Query the same project and all traces belonging to the test lifecycle. Compare
+  parentage, messages, usage, tool attempts, and timing using
+  [trace fidelity](trace_fidelity.md).
 - Fix, rerun, and requery before the next increment. At the end, run the
   [conformance check](trace_fidelity.md#conformance-check) across completed paths.
 
@@ -51,8 +52,25 @@ Example body; replace `entity/project` and `TRACE_ID` with the test's identifier
 - Use `include_details` for message/tool payloads and `include_costs` for pricing.
   Omitted fields are not proof of absent instrumentation. Costs may be unavailable
   without matching prices; compare raw usage with provider responses separately.
-- For two-turn checks, query each captured trace ID. Keep the query bounded to
-  test data; avoid fetching unrelated production conversations.
+- Capture trace IDs from every continuation and worker. If IDs are missing,
+  discover them within the test conversation and bounded time window, then
+  correlate using the verified application turn/run ID. Do not certify a whole
+  turn from one step trace. Keep queries scoped to test data.
+
+## Check coverage, not just error rates
+
+- Break results down by agent/worker and exporter version. Verify usage and
+  parent/link context for each producer; healthy main-agent spans can hide a
+  broken delegated-agent exporter.
+- Compare observed operations with independently recorded execution attempts.
+  Zero bad tool spans is not a pass when expected tool spans are missing.
+- With `include_details`, inspect parsed `raw_span_dump` and its events when available.
+  Application-defined result-receipt events are useful evidence, but do not
+  supply tool execution start/end times. Distinguish absent raw usage from
+  normalized zero/default fields.
+- Report `passed`, `failed`, or `unverified` per producer for turn continuity,
+  usage, tool execution, and delegation. Preserve known-good behavior while
+  fixing the remaining paths; do not remove evidence to make checks pass.
 
 Record the query scope, returned IDs/counts, checks and failures, and trace link.
 Keep private payloads out of reports. Backend receipt does not prove rendering:
