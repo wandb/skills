@@ -9,9 +9,11 @@ import sys
 from pathlib import Path
 
 EXPECTED_SKILLS = {
+    "agentlens-tracing-instrument",
     "wandb-autoresearch",
     "wandb-eval-tables",
     "wandb-primary",
+    "weave-instrument",
 }
 
 SECRET_PATTERNS = (
