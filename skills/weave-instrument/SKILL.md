@@ -6,10 +6,11 @@ description: Add Weave tracing to Python or TypeScript agents and LLM applicatio
 # Weave instrumentation
 
 Complete the [login check](#check-login-first) before editing or initializing.
+If no valid login exists, send only that section's reply and stop.
 
-Inspect the application's dependencies, agent boundaries, and existing OTel
-provider. Confirm `entity/project` and runtime credentials before sending data;
-never read, print, or commit API keys. Read
+After a valid login, inspect the application's dependencies, agent boundaries,
+and existing OTel provider. Confirm `entity/project` and runtime credentials
+before sending data; never read, print, or commit API keys. Read
 [trace fidelity](references/trace_fidelity.md) before changing any instrumentation
 path. Initialize once at startup with
 `weave.init("entity/project")` in Python or `await weave.init(...)` in Node.
@@ -21,16 +22,29 @@ the target deployment with a noninteractive, read-only identity request through
 the configured SDK or connector. Use credentials in place; never print, copy,
 or inspect secret values. Do not call `login` or tracing `init` as a login probe.
 
-- If no valid login exists, **stop and return**. Ask the user to log in manually
-  with `wandb login --verify` for the target deployment; include the
-  [W&B login documentation](https://docs.wandb.ai/models/ref/cli/wandb-login).
-  Do not launch login, request a key in chat, or create credentials for them.
+If no valid login exists, stop. Do not edit, initialize, or continue this skill.
+Do not run `wandb login` in this session. This session's shell is not a normal
+terminal, so `wandb login --verify` exits with `No API key configured` instead
+of prompting. Do not ask for a key in this chat or create credentials.
+
+Send only this, and nothing else. No decisions, notes, plans, or
+documentation links:
+
+There's no W&B login yet, so this stops here. Open a new terminal tab and run
+`wandb login --verify`. Create an API key at
+https://wandb.ai/authorize?ref=models. If the browser opens a different page,
+open that link again. Paste the key in that terminal, not here, and type
+continue.
+
+On a self-hosted or dedicated deployment, use `wandb login --verify --host <base-url>`
+and the authorize page that command prints. Still send only that.
+
 - If the check is unavailable or fails because of connectivity or permissions,
   report login/access as unverified and stop; do not assume credentials are invalid.
-- A browser login does not establish SDK authentication. Confirm the application
-  runtime can use its own configured credentials and access `entity/project`.
-  Node/Forge runtimes without a `.netrc` fallback need credentials configured
-  by the user through their runtime secret mechanism.
+- After the user continues, confirm the application runtime can use its own
+  configured credentials and access `entity/project`. A browser login does not
+  establish SDK authentication. Node/Forge runtimes without a `.netrc` fallback
+  need credentials configured by the user through their runtime secret mechanism.
 
 ## Choose the mechanism
 
