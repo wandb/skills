@@ -226,11 +226,13 @@ for r in rows:
 
 ### Count traces (fast, server-side)
 
+The `weave.shared.*` import paths below need weave 0.53.12 or newer; on older versions the same classes live under `weave.trace_server.*`.
+
 ```python
 import weave, os, logging
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
-from weave.trace_server.interface.query import Query
+from weave.shared.trace_server_interface import CallsQueryStatsReq
+from weave.shared.interface.query import Query
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -305,8 +307,8 @@ print(f"Non-error calls: {stats.count - error_stats.count}")
 import os, statistics, weave, logging, sys
 from collections import Counter
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
-from weave.trace_server.interface.query import Query
+from weave.shared.trace_server_interface import CallsQueryStatsReq
+from weave.shared.interface.query import Query
 sys.path.insert(0, "skills/wandb-primary/scripts")
 from weave_helpers import unwrap
 
@@ -345,7 +347,7 @@ print(f"mean texts per call: {statistics.mean(sizes) if sizes else 0:.4f}")
 ```python
 import os, weave, logging
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import FeedbackQueryReq
+from weave.shared.trace_server_interface import FeedbackQueryReq
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -383,7 +385,7 @@ print(f"Feedback records: {total}")
 import os, weave, logging
 from collections import Counter
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+from weave.shared.trace_server_interface import CallsQueryStatsReq
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -417,7 +419,7 @@ for name, count in counts.most_common():
 import os, weave, logging
 from collections import Counter
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+from weave.shared.trace_server_interface import CallsQueryStatsReq
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -445,7 +447,7 @@ columns and count locally.
 ```python
 import os, weave, logging
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+from weave.shared.trace_server_interface import CallsQueryStatsReq
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -476,7 +478,7 @@ print(f"Duration > {threshold_s}s: {long_count}")
 import os, weave, logging
 from collections import Counter
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+from weave.shared.trace_server_interface import CallsQueryStatsReq
 import sys
 sys.path.insert(0, "skills/wandb-primary/scripts")
 from weave_helpers import unwrap
@@ -523,7 +525,7 @@ for name, count in models.most_common():
 import os, weave, logging
 from collections import Counter
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.interface.query import Query
+from weave.shared.interface.query import Query
 import sys
 sys.path.insert(0, "skills/wandb-primary/scripts")
 from weave_helpers import unwrap
@@ -578,7 +580,7 @@ and class `.score` ops like `HallucinationFreeScorer.score` when present.
 import os, weave, logging
 from collections import Counter
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+from weave.shared.trace_server_interface import CallsQueryStatsReq
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -604,7 +606,7 @@ for name, count in scorers.most_common():
 ```python
 import wandb, weave, os, logging
 logging.getLogger("weave").setLevel(logging.ERROR)
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+from weave.shared.trace_server_interface import CallsQueryStatsReq
 
 entity = os.environ["WANDB_ENTITY"]
 project = os.environ["WANDB_PROJECT"]
@@ -1684,7 +1686,7 @@ existing reports, and share links, see `references/REPORTS.md`.
 | Nested output | `out.get('succeeded')` | `out.get('output').get('succeeded')` (output.output) |
 | ObjectRef comparison | `name_ref == "foo"` | `str(name_ref) == "foo"` |
 | CallsFilter import | `from weave import CallsFilter` | `from weave.trace.weave_client import CallsFilter` |
-| Query import | `from weave import Query` | `from weave.trace_server.interface.query import Query` |
+| Query import | `from weave import Query` | `from weave.shared.interface.query import Query` |
 | Eval status path | `summary["status"]` | `summary["weave"]["status"]` |
 | Eval success count | `summary["success_count"]` | `summary["weave"]["status_counts"]["success"]` |
 | When in doubt | Guess the type | `unwrap()` first, then inspect |

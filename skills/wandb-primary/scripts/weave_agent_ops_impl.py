@@ -106,7 +106,10 @@ def _print_turn(turn: Any, index: int, total: int, full: bool) -> tuple[int, int
 
 
 def _cmd_conversation(args: argparse.Namespace) -> None:
-    from weave.trace_server.agents import types as at
+    try:  # weave >= 0.53.12
+        from weave.shared.agents import types as at
+    except ImportError:
+        from weave.trace_server.agents import types as at
 
     pid = _resolve_path(args.path)
     server = _server(pid)
@@ -145,7 +148,10 @@ def _cmd_conversation(args: argparse.Namespace) -> None:
 
 
 def _cmd_trace(args: argparse.Namespace) -> None:
-    from weave.trace_server.agents import types as at
+    try:  # weave >= 0.53.12
+        from weave.shared.agents import types as at
+    except ImportError:
+        from weave.trace_server.agents import types as at
 
     pid = _resolve_path(args.path)
     server = _server(pid)

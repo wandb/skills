@@ -163,7 +163,10 @@ def _op_ref(entity: str, project: str, op: str) -> str:
 
 
 def _count_calls(client: Any, project_id: str, filter_dict: dict[str, Any]) -> int:
-    from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+    try:  # weave >= 0.53.12
+        from weave.shared.trace_server_interface import CallsQueryStatsReq
+    except ImportError:
+        from weave.trace_server.trace_server_interface import CallsQueryStatsReq
 
     return client.server.calls_query_stats(
         CallsQueryStatsReq(project_id=project_id, filter=filter_dict)
