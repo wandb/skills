@@ -67,10 +67,10 @@ df = client.get_calls(limit=500).to_pandas()
 
 ## Efficient counting (calls_query_stats)
 
-For projects with 100k+ traces, use server-side stats instead of fetching all calls:
+For projects with 100k+ traces, use server-side stats instead of fetching all calls (the `weave.shared.*` paths need weave 0.53.12 or newer; older versions use `weave.trace_server.*`):
 
 ```python
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+from weave.shared.trace_server_interface import CallsQueryStatsReq
 
 stats = client.server.calls_query_stats(CallsQueryStatsReq(
     project_id=f"{client.entity}/{client.project}",
@@ -110,7 +110,7 @@ CallsFilter(
 ## Advanced queries (MongoDB-style)
 
 ```python
-from weave.trace_server.interface.query import Query
+from weave.shared.interface.query import Query
 
 # Find error calls
 error_calls = client.get_calls(
@@ -217,10 +217,10 @@ These are easy to get wrong:
 from weave.trace.weave_client import CallsFilter
 
 # Query (MongoDB-style)
-from weave.trace_server.interface.query import Query
+from weave.shared.interface.query import Query
 
 # Stats endpoint
-from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+from weave.shared.trace_server_interface import CallsQueryStatsReq
 ```
 
 ## Agent conversations and agent traces

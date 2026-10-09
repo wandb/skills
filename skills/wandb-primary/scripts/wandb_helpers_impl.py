@@ -141,9 +141,14 @@ def probe_project(api: Any, path: str, sample_size: int = 3) -> dict[str, Any]:
         import logging as _logging
 
         import weave as _weave  # local import — weave may not always be present
-        from weave.trace_server.trace_server_interface import (
-            CallsQueryStatsReq as _StatsReq,
-        )
+        try:  # weave >= 0.53.12
+            from weave.shared.trace_server_interface import (
+                CallsQueryStatsReq as _StatsReq,
+            )
+        except ImportError:
+            from weave.trace_server.trace_server_interface import (
+                CallsQueryStatsReq as _StatsReq,
+            )
 
         _logging.getLogger("weave").setLevel(_logging.ERROR)
         _client = _weave.init(path)

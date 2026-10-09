@@ -2405,7 +2405,10 @@ def run_snapshot_row(run: Any, path: str) -> dict[str, Any]:
 def optional_weave_counts(path: str) -> dict[str, Any]:
     try:
         import logging, weave
-        from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+        try:  # weave >= 0.53.12
+            from weave.shared.trace_server_interface import CallsQueryStatsReq
+        except ImportError:
+            from weave.trace_server.trace_server_interface import CallsQueryStatsReq
         logging.getLogger("weave").setLevel(logging.ERROR)
         client = weave.init(path)
         total = client.server.calls_query_stats(CallsQueryStatsReq(project_id=path)).count
