@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import combinations
 
 from .common import *  # noqa: F403
+from wandb_helpers import aggregate_named_sweeps
 from wandb_run_vocab import CONFIG_AXIS_TOKENS, CONFIG_OVERVIEW_TOKENS, GPU_TRAINING_EXCLUDE_TERMS, LAYER_METRIC_TOKENS, LAYER_STAT_TOKENS, STABILITY_GRADIENT_TOKENS, STABILITY_PRIMARY_LOSS_TOKENS, STABILITY_REGULARIZER_LOSS_TOKENS
 DATA_SUFFIXES = {".jsonl", ".ndjson", ".json", ".csv", ".tsv"}; MEDIA_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".mov"}; CHECKPOINT_TOKENS = "checkpoint ckpt model weights adapter lora state_dict train-state best last".split()
 STRUCTURED_FIELD_COUNT_FILENAME_TOKENS = "manifest metadata meta stats statistic statistics summary summaries index indices labels annotations records rows results evaluations metrics scores monitoring monitors traces trace calls events telemetry".split()
@@ -435,6 +436,35 @@ def select_stability_metric_keys(sample: list[Any], limit: int) -> list[str]:
 # -----------------------------------------------------------------------------
 # Basic run inspection
 # -----------------------------------------------------------------------------
+
+
+def cmd_aggregate_named_sweeps(args: argparse.Namespace) -> None:
+    """Print per-sweep state counts and projected summary metric stats."""
+    wb, path = ctx(args)
+    sweep_names = _aggregate_named_sweep_values(getattr(args, "sweep_name", None))
+    metric_keys = _aggregate_named_sweep_values(getattr(args, "metric", None))
+    if not sweep_names:
+        raise SystemExit("Pass at least one --sweep-name NAME")
+    if not metric_keys:
+        raise SystemExit("Pass at least one --metric KEY")
+    rows = aggregate_named_sweeps(
+        wb,
+        path,
+        sweep_names,
+        metric_keys,
+        limit_per_sweep=args.limit,
+        state=getattr(args, "state", None),
+    )
+    print(json.dumps(rows, indent=2, sort_keys=True, default=str))
+
+
+def _aggregate_named_sweep_values(values: list[str] | None) -> list[str]:
+    if not values:
+        return []
+    tokens: list[str] = []
+    for value in values:
+        tokens.extend(part.strip() for part in value.split(",") if part.strip())
+    return list(dict.fromkeys(tokens))
 
 
 def cmd_count_runs(args: argparse.Namespace) -> None:
@@ -2405,7 +2435,10 @@ def run_snapshot_row(run: Any, path: str) -> dict[str, Any]:
 def optional_weave_counts(path: str) -> dict[str, Any]:
     try:
         import logging, weave
-        from weave.trace_server.trace_server_interface import CallsQueryStatsReq
+        try:
+            from weave.shared.trace_server_interface import CallsQueryStatsReq
+        except ImportError:  # weave < 0.53
+            from weave.trace_server.trace_server_interface import CallsQueryStatsReq
         logging.getLogger("weave").setLevel(logging.ERROR)
         client = weave.init(path)
         total = client.server.calls_query_stats(CallsQueryStatsReq(project_id=path)).count

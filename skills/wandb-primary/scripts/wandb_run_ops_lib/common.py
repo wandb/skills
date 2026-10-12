@@ -112,8 +112,10 @@ def parse_config_eq_specs(specs: list[str]) -> dict[str, str]:
 
 
 def filters_from_args(args: argparse.Namespace, **extra: Any) -> dict[str, Any]:
-    """Build W&B filters from an argparse state value and non-empty extras."""
+    """Build W&B filters from argparse state/sweep values and non-empty extras."""
     filters = {"state": args.state} if getattr(args, "state", None) else {}
+    if getattr(args, "sweep", None):
+        filters["sweep"] = args.sweep
     filters.update({k: v for k, v in extra.items() if v not in (None, {}, [])})
     for key, value in parse_config_eq_specs(getattr(args, "config_eq", None) or []).items():
         filters[f"config.{key}"] = value

@@ -9,6 +9,10 @@ silently, especially for workspace views. These helpers save and then re-read th
 object from the server, so you get a trustworthy ``verified`` flag instead of
 hand-rolling (and usually skipping) the read-back.
 
+Existing-report edits also save the original GraphQL ``View`` response before any
+Pydantic parsing. In particular, the ``spec`` remains the exact JSON string returned
+by the server; ``model_dump()`` output is not a recovery backup.
+
 Usage:
     import sys
     sys.path.insert(0, "skills/wandb-primary/scripts")
@@ -18,7 +22,7 @@ Usage:
     # CREATE: build blocks however you like, then save+verify in one call.
     report = wr.Report(entity=ENT, project=PROJ, title="...", width="readable",
                        blocks=[...])
-    result = save_report_verified(report)        # draft=True by default
+    result = save_report_verified(report)        # publishes; pass draft=True for a private draft
     print(result["answer"])                      # -> answer=... verified=True url=...
 
     # EDIT: mutate an existing report, then save+verify.
@@ -33,7 +37,14 @@ project. These helpers never do.
 
 from __future__ import annotations
 
-from typing import Any, Callable, TypedDict
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, TypedDict
+
+from report_write import DEFAULT_REPORT_BACKUP_DIR, backup_report_view
+
+_SAVE_VERIFIED_OUTCOME = "report saved and verified"
+_SAVE_UNVERIFIED_OUTCOME = "report saved but read-back verification FAILED"
 
 
 class ReportResult(TypedDict):
@@ -44,29 +55,31 @@ class ReportResult(TypedDict):
     saved_blocks: int
     readback_blocks: int
     readback_title: str
+    backup_path: str
     error: str | None
     answer: str
 
 
-def _readback(url: str) -> Any:
+def _readback(url: str, *, as_model: bool = False) -> Any:
     """Re-read a report from the server. Returns the loaded Report or raises."""
     import wandb_workspaces.reports.v2 as wr
 
-    return wr.Report.from_url(url)
+    return wr.Report.from_url(url, as_model=as_model)
 
 
 def save_report_verified(
     report: Any,
     *,
-    draft: bool = True,
+    draft: bool = False,
     expect_min_blocks: int | None = None,
     expect_text: str | None = None,
+    verify_readback: Callable[[Any], bool] | None = None,
 ) -> ReportResult:
-    """Save ``report`` (draft by default) then re-read it and confirm it landed.
+    """Save ``report`` then re-read it and confirm it landed.
 
     Verification passes when the re-read report has at least ``expect_min_blocks``
-    blocks (defaults to the number of blocks we tried to save) and, if
-    ``expect_text`` is given, that string appears somewhere in the re-read blocks.
+    blocks (defaults to the number of blocks we tried to save), ``expect_text`` is
+    present when provided, and ``verify_readback`` returns True when provided.
 
     Returns a ReportResult; ``verified`` is False (never raises) if the read-back
     fails or the content does not match, so the caller can report failure honestly
@@ -77,20 +90,30 @@ def save_report_verified(
 
     try:
         report.save(draft=draft)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return ReportResult(
-            url="", verified=False, saved_blocks=saved_blocks, readback_blocks=0,
-            readback_title="", error=f"save failed: {exc}",
+            url="",
+            verified=False,
+            saved_blocks=saved_blocks,
+            readback_blocks=0,
+            readback_title="",
+            backup_path="",
+            error=f"save failed: {exc}",
             answer=f"answer=report NOT saved verified=False error={exc!r}",
         )
 
     url = getattr(report, "url", "") or ""
     try:
         check = _readback(url)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return ReportResult(
-            url=url, verified=False, saved_blocks=saved_blocks, readback_blocks=0,
-            readback_title="", error=f"read-back failed: {exc}",
+            url=url,
+            verified=False,
+            saved_blocks=saved_blocks,
+            readback_blocks=0,
+            readback_title="",
+            backup_path="",
+            error=f"read-back failed: {exc}",
             answer=f"answer=save returned but read-back FAILED verified=False url={url} error={exc!r}",
         )
 
@@ -99,22 +122,39 @@ def save_report_verified(
     if expect_text is not None:
         text_ok = expect_text in _blocks_text(check)
 
-    verified = readback_blocks >= want_blocks > 0 and text_ok
+    custom_ok = True
+    custom_error = ""
+    if verify_readback is not None:
+        try:
+            custom_ok = bool(verify_readback(check))
+        except Exception as exc:
+            custom_ok = False
+            custom_error = f": {exc}"
+
+    verified = readback_blocks >= want_blocks > 0 and text_ok and custom_ok
     detail = ""
     if not verified:
         if readback_blocks < want_blocks:
-            detail = f" (read-back has {readback_blocks} blocks, expected >= {want_blocks})"
+            detail = (
+                f" (read-back has {readback_blocks} blocks, expected >= {want_blocks})"
+            )
         elif not text_ok:
             detail = f" (expected text {expect_text!r} not found in read-back)"
+        elif not custom_ok:
+            detail = f" (custom read-back verification failed{custom_error})"
 
+    outcome = _SAVE_VERIFIED_OUTCOME if verified else _SAVE_UNVERIFIED_OUTCOME
     return ReportResult(
-        url=url, verified=verified, saved_blocks=saved_blocks,
+        url=url,
+        verified=verified,
+        saved_blocks=saved_blocks,
         readback_blocks=readback_blocks,
         readback_title=getattr(check, "title", "") or "",
+        backup_path="",
         error=None if verified else f"verification failed{detail}",
         answer=(
-            f"answer=report saved and verified verified={verified} "
-            f"blocks={readback_blocks} url={url}" + (detail if not verified else "")
+            f"answer={outcome} verified={verified} "
+            f"blocks={readback_blocks} url={url}{detail}"
         ),
     )
 
@@ -123,34 +163,78 @@ def edit_report_verified(
     url: str,
     mutate: Callable[[Any], None],
     *,
-    draft: bool = True,
+    draft: bool = False,
     expect_text: str | None = None,
+    verify_readback: Callable[[Any], bool] | None = None,
+    backup_dir: str | Path = DEFAULT_REPORT_BACKUP_DIR,
 ) -> ReportResult:
-    """Load the report at ``url``, apply ``mutate`` to it, then save+verify.
+    """Back up, load, mutate, and save+verify the report at ``url``.
 
     ``mutate`` receives the loaded Report and should modify it in place (e.g. append
     to ``report.blocks``). Editing via ``from_url`` preserves the report ID; building
     a fresh ``wr.Report(...)`` and saving would orphan the original — don't.
     Verification requires the read-back to have at least as many blocks as the
-    post-mutation report (and ``expect_text`` if given).
+    post-mutation report, plus any ``expect_text`` or ``verify_readback`` condition.
+
+    The backup is fetched directly from GraphQL before the SDK parses the report.
+    The report's stored width is also restored because the public SDK loader currently
+    resets it to ``"readable"``.
     """
     try:
-        report = _readback(url)
-    except Exception as exc:  # noqa: BLE001
+        backup_path = backup_report_view(url, backup_dir=backup_dir)
+    except Exception as exc:
         return ReportResult(
-            url=url, verified=False, saved_blocks=0, readback_blocks=0,
-            readback_title="", error=f"load failed: {exc}",
+            url=url,
+            verified=False,
+            saved_blocks=0,
+            readback_blocks=0,
+            readback_title="",
+            backup_path="",
+            error=f"backup failed: {exc}",
+            answer=f"answer=report NOT edited verified=False backup_failed={exc!r}",
+        )
+
+    try:
+        stored_width = _readback(url, as_model=True).spec.width
+        report = _readback(url)
+        report.width = stored_width
+    except Exception as exc:
+        return ReportResult(
+            url=url,
+            verified=False,
+            saved_blocks=0,
+            readback_blocks=0,
+            readback_title="",
+            backup_path=str(backup_path),
+            error=f"load failed: {exc}",
             answer=f"answer=could not load report to edit verified=False url={url} error={exc!r}",
         )
 
     before = len(getattr(report, "blocks", []) or [])
-    mutate(report)
+    try:
+        mutate(report)
+    except Exception as exc:
+        return ReportResult(
+            url=url,
+            verified=False,
+            saved_blocks=before,
+            readback_blocks=0,
+            readback_title="",
+            backup_path=str(backup_path),
+            error=f"mutation failed before save: {exc}",
+            answer=f"answer=report NOT edited verified=False mutation_failed={exc!r}",
+        )
     after = len(getattr(report, "blocks", []) or [])
-    return save_report_verified(
-        report, draft=draft,
+    result = save_report_verified(
+        report,
+        draft=draft,
         expect_min_blocks=max(after, before),
         expect_text=expect_text,
+        verify_readback=verify_readback,
     )
+    result["backup_path"] = str(backup_path)
+    result["answer"] += f" backup={backup_path}"
+    return result
 
 
 def _blocks_text(report: Any) -> str:
@@ -158,8 +242,10 @@ def _blocks_text(report: Any) -> str:
     import json
 
     try:
-        return json.dumps([_block_to_plain(b) for b in (report.blocks or [])], default=str)
-    except Exception:  # noqa: BLE001
+        return json.dumps(
+            [_block_to_plain(b) for b in (report.blocks or [])], default=str
+        )
+    except Exception:
         return str(getattr(report, "blocks", ""))
 
 
@@ -169,6 +255,6 @@ def _block_to_plain(block: Any) -> Any:
         if callable(fn):
             try:
                 return fn()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
     return str(block)

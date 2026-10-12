@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import secrets
+import string
 from dataclasses import dataclass
 from typing import Any
 
@@ -40,6 +42,10 @@ class _MutationDetails:
     section_created: bool = False
 
 
+def _is_auto_panel_section(section: dict[str, Any]) -> bool:
+    return section.get("isPanelsAuto") is True or section.get("isAutoPanels") is True
+
+
 # ---------- spec mutation --------------------------------------------------
 
 
@@ -50,11 +56,17 @@ def _find_or_create_section(spec: dict[str, Any], name: str, *, create: bool, is
     needle = name.lower()
     for section in sections:
         if (section.get("name") or "").lower() == needle:
+            if _is_auto_panel_section(section):
+                raise SystemExit(
+                    f"Section {name!r} is auto-generated (isPanelsAuto=true) and "
+                    "cannot be edited safely. Choose a non-auto section, or pass a "
+                    "new --section name with --create-section."
+                )
             return section, False
     if not create:
         raise SystemExit(f"Section {name!r} not found. Pass --create-section to add it, or use add-section.")
     new_section = {
-        "__id__": wandb.util.generate_id(11),
+        "__id__": "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(11)),
         "name": name,
         "isOpen": is_open,
         "sorted": 0,
@@ -86,7 +98,7 @@ def _build_panel(*, panel_type: str, title: str, metrics: list[str], custom_expr
 
     panel = model._to_model().model_dump(by_alias=True, exclude_none=True)
     panel.pop("layout", None)  # match the shape of panels in existing user workspaces.
-    panel["__id__"] = wandb.util.generate_id(11)
+    panel["__id__"] = "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(11))
     return panel
 
 
@@ -103,10 +115,10 @@ def cmd_find_view(args: argparse.Namespace) -> None:
     entity, project = resolve_path(args.path, args.view_url)
     api = wandb.Api(timeout=API_TIMEOUT_SECONDS)
 
-    if args.view_url or args.view_token or args.display_contains:
-        # Narrow-first via fetch_view: a token match costs one single-view
+    if args.view_url or args.view_token or args.view_id or args.display_contains:
+        # Narrow-first via fetch_view: a token or id match costs one single-view
         # query instead of every view's full spec.
-        node, spec = fetch_view(api, entity, project, view_url=args.view_url, view_token=args.view_token, display_contains=args.display_contains)
+        node, spec = fetch_view(api, entity, project, view_url=args.view_url, view_token=args.view_token, view_id=args.view_id, display_contains=args.display_contains)
         sections = sections_of(spec)
         print(json.dumps({
             "answer": "found",
@@ -114,7 +126,20 @@ def cmd_find_view(args: argparse.Namespace) -> None:
             "name": node["name"],
             "displayName": node["displayName"],
             "url": public_url(entity, project, node["name"]),
-            "sections": [{"name": s.get("name"), "panels": len(s.get("panels", [])), "is_open": s.get("isOpen"), "pinned": s.get("pinned")} for s in sections],
+            "sections": [
+                {
+                    "name": s.get("name"),
+                    "panels": (
+                        None
+                        if _is_auto_panel_section(s)
+                        else len(s.get("panels", []))
+                    ),
+                    "is_panels_auto": _is_auto_panel_section(s),
+                    "is_open": s.get("isOpen"),
+                    "pinned": s.get("pinned"),
+                }
+                for s in sections
+            ],
         }, indent=2))
         return
 
@@ -168,6 +193,7 @@ def cmd_add_panel(args: argparse.Namespace) -> None:
         project=project,
         view_url=args.view_url,
         view_token=args.view_token,
+        view_id=args.view_id,
         display_contains=args.display_contains,
         mutate=mutate,
     )
@@ -222,6 +248,7 @@ def cmd_add_section(args: argparse.Namespace) -> None:
         project=project,
         view_url=args.view_url,
         view_token=args.view_token,
+        view_id=args.view_id,
         display_contains=args.display_contains,
         mutate=mutate,
     )
@@ -248,7 +275,8 @@ def cmd_add_section(args: argparse.Namespace) -> None:
 
 _TARGET_FLAGS: list[tuple[tuple[str, ...], dict[str, Any]]] = [
     (("--view-url",), {"help": "Workspace URL containing an ?nw=<token> query param. Resolves entity/project too."}),
-    (("--view-token",), {"help": "The `nw` token alone (e.g. `nwusersrando` or `abc123`)."}),
+    (("--view-token",), {"help": "The `nw` token alone (e.g. `nwusersrando` or `abc123`) — the `?nw=` value, not the backend id."}),
+    (("--view-id",), {"help": "The backend view id `find-view` reports as `id` (e.g. `Vmlldzo0MDk3NDQ0`)."}),
     (("--display-contains",), {"help": "Substring of the view displayName. Must match exactly one view."}),
     (("--path",), {"help": "ENTITY/PROJECT. Defaults to WANDB_ENTITY/WANDB_PROJECT. Ignored if --view-url is given."}),
 ]

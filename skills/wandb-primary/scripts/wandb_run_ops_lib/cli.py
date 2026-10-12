@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 from . import core
 from .common import COHORT_NAME_SELECTOR_PREFIXES, COHORT_SELECTOR_HELP
+from wandb_helpers import DEFAULT_AGGREGATE_NAMED_SWEEPS_LIMIT
 
 DESCRIPTION = "Low-latency W&B run-table, artifact, history, and project-inspection helpers."
 TOP_LEVEL_EPILOG = """\
@@ -98,6 +99,11 @@ Canonical examples:
   python $R count-runs --entity ENTITY --project PROJECT --state finished
   python $R count-runs --entity ENTITY --project PROJECT --by-sweep
 """,
+    "aggregate-named-sweeps": """\
+Canonical examples:
+  python $R aggregate-named-sweeps --entity ENTITY --project PROJECT --sweep-name medium-sweep-a --sweep-name medium-sweep-b --metric city_rmse --metric global_rmse
+  python $R aggregate-named-sweeps --entity ENTITY --project PROJECT --sweep-name sweep-a,sweep-b --metric loss
+""",
     "inspect-schema": """\
 Canonical examples:
   python $R inspect-schema --entity ENTITY --project PROJECT --schema both --sample 50
@@ -152,8 +158,9 @@ COMMON = [
     _arg("--entity", help="W&B entity. If omitted, read WANDB_ENTITY from the environment."),
     _arg("--project", help="W&B project. If omitted, read WANDB_PROJECT from the environment."),
     _arg("--state", help="Optional run state filter, such as finished, crashed, or running."),
-    _arg("--include-sweeps", nargs="?", const=True, default=False, type=bool_value, help="Include sweep runs in W&B run queries and counts."),
-    _arg("--exclude-sweeps", action="store_false", dest="include_sweeps", default=argparse.SUPPRESS, help="Exclude sweep runs from W&B run queries and counts."),
+    _arg("--sweep", help="Restrict to runs belonging to this sweep (sweep id)."),
+    _arg("--include-sweeps", nargs="?", const=True, default=False, type=bool_value, help="Include sweep metadata in W&B run queries and counts."),
+    _arg("--exclude-sweeps", action="store_false", dest="include_sweeps", default=argparse.SUPPRESS, help="Exclude sweep metadata from W&B run queries and counts."),
 ]
 
 OPS = "status recent finished most-recent oldest earliest-finished latest-crashed run-info creator name-pattern project-description run-config config-profiles summary-stats metric-count duration-range system-metrics tags groups tag-counts date-counts".split()
@@ -167,6 +174,11 @@ COMMANDS: list[tuple[str, str, Callable[[argparse.Namespace], None], list[ArgSpe
         _arg("--group-sample", type=positive_int, default=500, help="Runs per discovery slice for --by-group; default samples newest 500 and oldest 500."),
         _arg("--include-ungrouped", action="store_true", help="Also count runs without a group."),
         _arg("--order", help="Optional single W&B order for group discovery; default samples recent and oldest slices."),
+    ]),
+    ("aggregate-named-sweeps", "Per named sweep: sample state counts + projected summary metric stats (state_counts_scope=fetched_sample).", core.cmd_aggregate_named_sweeps, [
+        _arg("--sweep-name", action="append", required=True, help="Sweep display name from the user-provided list; repeat or comma-separate."),
+        _arg("--metric", action="append", required=True, help="Summary metric key to project; repeat or comma-separate."),
+        _arg("--limit", type=positive_int, default=DEFAULT_AGGREGATE_NAMED_SWEEPS_LIMIT, help="Maximum runs to fetch per sweep."),
     ]),
     ("artifact-inventory", "List artifact types, collection counts, and bounded version totals.", core.cmd_artifact_inventory, [
         _arg("--type", action="append", default=[], help="Artifact type to include; repeat as needed."),

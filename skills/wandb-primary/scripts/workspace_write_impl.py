@@ -23,6 +23,7 @@ only metadata columns a guarded write will ever touch, and only on request.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -39,7 +40,9 @@ if TYPE_CHECKING:
 _MutateResult = TypeVar("_MutateResult")
 
 MAX_UPSERT_ATTEMPTS = 3
-# Code and message are set in gorilla's `UpsertView` resolver
+# GraphQL global-id type prefix the W&B server encodes into a view's `id` (`base64("View:<n>")`).
+_VIEW_GLOBAL_ID_TYPE = "View"
+# Code and message are set by the server's `UpsertView` resolver
 VIEW_SPEC_CONFLICT_CODE = "VIEW_SPEC_CONFLICT"
 VIEW_SPEC_CONFLICT_MESSAGE = "workspace changed since you loaded it"
 
@@ -64,6 +67,11 @@ VIEW_BY_NAME_QUERY = """query PublicWorkspaceViewByName($entityName: String!, $p
       edges { node { id name displayName spec updatedAt } }
     }
   }
+}"""
+
+# Equally narrow, keyed by the backend `id` that every view listing returns.
+VIEW_BY_ID_QUERY = """query PublicWorkspaceViewById($viewId: ID!) {
+  view(id: $viewId) { id name displayName spec updatedAt }
 }"""
 
 # `displayName` / `description` are optional and nullable: the caller sends them
@@ -113,6 +121,20 @@ def token_to_internal_name(token: str) -> str:
     return f"nw-{token}-{suffix}"
 
 
+def is_view_id(reference: str) -> bool:
+    """True when *reference* is a backend view id (`Vmlldzo…`) rather than an `nw` token.
+
+    View ids are the base64 `View:<n>` global ids that every view listing returns, so
+    the value itself tells us which lookup to run — a caller that passes an id to
+    `--view-token` (or a token to `--view-id`) still resolves.
+    """
+    try:
+        decoded = base64.b64decode(reference, validate=True).decode()
+    except (ValueError, UnicodeDecodeError):
+        return False
+    return decoded.split(":", 1)[0] == _VIEW_GLOBAL_ID_TYPE
+
+
 # ---------- view lookup ----------------------------------------------------
 
 
@@ -126,12 +148,12 @@ def _find_view_node(nodes: list[dict[str, Any]], *, token: str | None, display_c
     if token:
         wanted_name = token_to_internal_name(token)
         for node in nodes:
-            if node.get("name") == wanted_name:
+            if node.get("name") == wanted_name or node.get("id") == token:
                 return node
         for node in nodes:
             if token in (node.get("name") or "") or token in (node.get("displayName") or ""):
                 return node
-        raise SystemExit(f"No saved view matched token {token!r}.")
+        raise SystemExit(f"No saved view matched token or id {token!r}.")
     if display_contains:
         needle = display_contains.lower()
         matches = [n for n in nodes if needle in (n.get("displayName") or "").lower()]
@@ -141,7 +163,7 @@ def _find_view_node(nodes: list[dict[str, Any]], *, token: str | None, display_c
             names = ", ".join(f"{n['displayName']!r} (id={n['id']})" for n in matches)
             raise SystemExit(f"Ambiguous: multiple views match {display_contains!r}: {names}.")
         return matches[0]
-    raise SystemExit("Pass either --view-url, --view-token, or --display-contains.")
+    raise SystemExit("Pass one of --view-url, --view-token, --view-id, or --display-contains.")
 
 
 def fetch_view_by_name(api: Any, entity: str, project: str, internal_name: str) -> dict[str, Any] | None:
@@ -152,16 +174,28 @@ def fetch_view_by_name(api: Any, entity: str, project: str, internal_name: str) 
     return nodes[0] if nodes else None
 
 
-def fetch_view(api: Any, entity: str, project: str, *, view_url: str | None, view_token: str | None, display_contains: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+def fetch_view_by_id(api: Any, view_id: str) -> dict[str, Any] | None:
+    """Fetch a single view by the backend `id` a view listing returns. Stays fast on big projects."""
+    resp = execute_graphql(api, VIEW_BY_ID_QUERY, {"viewId": view_id})
+    return (resp or {}).get("view") or None
+
+
+def fetch_view(api: Any, entity: str, project: str, *, view_url: str | None, view_token: str | None, display_contains: str | None, view_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return (node, parsed_spec_dict)."""
-    token = view_token or (token_from_url(view_url) if view_url else None)
-    if token:
-        # Narrow path first — avoids pulling every view's spec on big projects.
-        node = fetch_view_by_name(api, entity, project, token_to_internal_name(token))
+    reference = view_id or view_token or (token_from_url(view_url) if view_url else None)
+    if reference:
+        # Narrow path first — avoids pulling every view's spec on big projects. Which
+        # query to run follows from the reference itself, not the flag it arrived on,
+        # so an `nw` token in --view-id (or an id in --view-token) still resolves.
+        node = (
+            fetch_view_by_id(api, reference)
+            if is_view_id(reference)
+            else fetch_view_by_name(api, entity, project, token_to_internal_name(reference))
+        )
         if node is not None:
             return node, json.loads(node["spec"])
     nodes = list_views(api, entity, project)
-    node = _find_view_node(nodes, token=token, display_contains=display_contains)
+    node = _find_view_node(nodes, token=reference, display_contains=display_contains)
     spec = json.loads(node["spec"])
     return node, spec
 
@@ -242,6 +276,7 @@ def mutate_view_with_retry(
     view_token: str | None,
     display_contains: str | None,
     mutate: Callable[[dict[str, Any]], _MutateResult],
+    view_id: str | None = None,
     display_name: str | None = None,
     description: str | None = None,
 ) -> tuple[dict[str, Any], _MutateResult]:
@@ -262,6 +297,7 @@ def mutate_view_with_retry(
             view_url=view_url,
             view_token=view_token,
             display_contains=display_contains,
+            view_id=view_id,
         )
         mutate_result = mutate(spec)
         try:
