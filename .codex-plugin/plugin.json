@@ -1,0 +1,38 @@
+{
+  "name": "wandb-skills",
+  "version": "0.1.0",
+  "description": "Official Weights & Biases Agent Skills packaged for ChatGPT and Codex plugin workflows.",
+  "author": {
+    "name": "Weights & Biases"
+  },
+  "homepage": "https://github.com/wandb/skills",
+  "repository": "https://github.com/wandb/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "wandb",
+    "weights-and-biases",
+    "machine-learning",
+    "reinforcement-learning",
+    "experiment-tracking",
+    "model-training",
+    "evaluation",
+    "weave"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Weights & Biases Skills",
+    "shortDescription": "Analyze and manage ML experiments with W&B",
+    "longDescription": "Use the official Weights & Biases Agent Skills for experiment tracking, run analysis, model training, evaluation, hyperparameter tuning, W&B Tables, Launch, Weave, Artifacts, Registry, and research workflows.",
+    "developerName": "Weights & Biases",
+    "category": "Data & Analytics",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://wandb.ai/",
+    "defaultPrompt": [
+      "Analyze my W&B experiment runs and identify the main performance differences.",
+      "Compare reinforcement learning runs across seeds and hyperparameters.",
+      "Help me design and analyze an ablation study using W&B."
+    ]
+  }
+}
