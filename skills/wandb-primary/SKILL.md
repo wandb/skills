@@ -1,6 +1,6 @@
 ---
 name: wandb-primary
-description: "Primary W&B skill for broad or mixed Weights & Biases work: project overviews, W&B runs and artifacts, Weave traces and evaluations, Reports, and Launch workflows. Use when the task spans multiple W&B surfaces or the user asks generally what is happening in a W&B project."
+description: "Primary W&B skill for broad or mixed Weights & Biases work: project overviews, W&B runs and artifacts, Weave traces and evaluations, Reports, Workspaces, Automations, Sweeps, Launch, and Agent Lens. Use when the task spans multiple W&B surfaces or the user asks generally what is happening in a W&B project."
 ---
 <!--
 SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
@@ -1297,6 +1297,11 @@ These rules prevent 502 errors, timeouts, and multi-minute hangs on projects wit
 | Create a report | **`wandb-workspaces`** (`wandb_workspaces.reports.v2`) — see `references/REPORTS.md` |
 | Inspect or edit a workspace view (sections, panels, runset filters, pinned columns, run colors) | **`wandb_workspaces.workspaces`** — see `references/WORKSPACES.md` |
 | Create an Artifact Collection Overview draft | **`collection_overview_helpers.py`** — see `references/COLLECTION_OVERVIEWS.md` |
+| List or create Automations (alerts, Slack/webhook/push notifications) | **`automation_helpers.py`** — see `references/AUTOMATION_OPS.md` |
+| Create, inspect, or analyze Sweeps | **`sweeps_helpers.py`** / **`wandb_run_ops.py`** — see `references/SWEEPS.md` |
+| Set up Launch queues, relaunch runs, or debug queue items | **`launch_helpers.py`** — see `references/LAUNCH.md` |
+| Inspect or create Weave Signal monitors | **`weave_monitor_ops.py`** — see `references/WEAVE_SDK.md` |
+| Agent Lens conversations, Insights, and tags | **`weave_agent_ops.py`** / Agent Lens API — see `references/AGENT_LENS.md` |
 | Set up production monitoring | **`weave.Monitor`** |
 | Reproduce/relaunch a run | **`launch_helpers.relaunch_run()`** or CLI |
 | Launch a training job on GPU/K8s | **`launch_helpers.submit_code_artifact_job()`** |
@@ -1371,6 +1376,9 @@ python skills/wandb-primary/scripts/artifact_helpers.py --help
 python skills/wandb-primary/scripts/workspace_ops.py --help
 python skills/wandb-primary/scripts/collection_overview_helpers.py --help
 python skills/wandb-primary/scripts/weave_agent_ops.py --help
+python skills/wandb-primary/scripts/weave_monitor_ops.py --help
+python skills/wandb-primary/scripts/automation_helpers.py --help
+python skills/wandb-primary/scripts/launch_helpers.py --help
 ```
 
 - `wandb_run_ops.py` covers run counts, ranking, variants, config/cohort
@@ -1400,6 +1408,10 @@ Read these as needed — they contain full API surfaces and recipes:
 - **`references/HYPOTHESIS_GENERATION.md`** — Four-phase synergistic hypothesis generation methodology. Read this for any task involving experiment analysis, anomaly diagnosis, "what went wrong?", or "what should I try next?".
 - **`references/REPORTS.md`** — W&B Report authoring/editing: runsets, structured filters, panels, media, columns, loading, and share links.
 - **`references/WORKSPACES.md`** — Programmatic workspace views: load/create, sections and panels, runset filters/groupby/columns/run colors, save semantics, and the raw-spec path for the default user workspace.
+- **`references/AUTOMATION_OPS.md`** — W&B Automations: scopes, events, filters, actions; list/create via GraphQL and `automation_helpers.py`.
+- **`references/SWEEPS.md`** — Sweep configs, creation, agents, scheduler, and named-sweep aggregation.
+- **`references/LAUNCH.md`** — Launch queues (local Docker and Kubernetes), code jobs, relaunch, and queue-item diagnosis.
+- **`references/AGENT_LENS.md`** — Agent Lens data planes, Forge SDK instrumentation, Insights/tags semantics, and the service API.
 ---
 
 ## Analyzing a project

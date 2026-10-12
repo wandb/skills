@@ -47,6 +47,7 @@ canonical recovery example when a command-specific flag is rejected.
 |---|---|
 | count runs | `python $R count-runs --entity E --project P [--state finished]` |
 | count by sweep/group | `python $R count-runs --entity E --project P --by-sweep` or `--by-group --include-ungrouped` |
+| per-sweep metric stats for named sweeps | `python $R aggregate-named-sweeps --entity E --project P --sweep-name SWEEP_A --sweep-name SWEEP_B --metric METRIC` |
 | project overview | `python $R project-snapshot --entity E --project P --sample 12` |
 | schema / metric / config keys | `python $R inspect-schema --entity E --project P --schema both --sample 50` |
 | config value vocabulary | `python $R inspect-schema --entity E --project P --distinct-values CONFIG_KEY --sample 50` |
@@ -62,6 +63,7 @@ canonical recovery example when a command-specific flag is rejected.
 | workspace views | `python $R workspace-views --entity E --project P` |
 | history/stability | `python $R diagnose-history --entity E --project P --metric METRIC --sample 60 --history-samples 80` |
 | full project scan in custom Python | `wandb_helpers.fetch_runs(get_api(), "E/P", metric_keys=[...], config_keys=[...], limit=N, jsonl_path="checkpoint.jsonl")` — see `scripts/wandb_helpers.py` |
+| restrict any command above to one sweep | add `--sweep SWEEP_ID`, e.g. `python $R metric-grid --entity E --project P --sweep SWEEP_ID --metric-hint FAMILY --axis CONFIG_AXIS` |
 
 ## CLI flag grammar
 
@@ -77,7 +79,13 @@ call to a subcommand if the exact invocation is not shown here.
   `--include-sweeps`, `--show-hparams`, and `--answer` tolerate explicit
   `true`/`false` values; `--exclude-sweeps` is a readable false form for
   `--include-sweeps`.
-- `--include-sweeps` means include sweep runs in W&B run queries and counts.
+- `--include-sweeps` means to hydrate full sweep metadata (where available)
+  when fetching runs
+- `--sweep SWEEP_ID` restricts to runs belonging to that sweep. It is a common
+  flag (via `filters_from_args`), so it works on every subcommand that samples
+  runs. Distinct from `compare-cohorts`'s `sweep:<id>`/`sweep:any` cohort selectors,
+  which compare a sweep's runs against another cohort
+  rather than just scoping the sample to it.
 - Most helpers print `answer=` automatically. `--answer` is advertised only for
   `rank-runs`; other helpers tolerate it as a no-op.
 - `--show-hparams` prints likely hyperparameter keys. For exact config fields,
@@ -89,9 +97,7 @@ call to a subcommand if the exact invocation is not shown here.
 
 ## Output contract
 
-- Helpers print machine-readable lines; `answer=` is the result. Companion keys:
-  `interpretation_hint=`, `stop_rule=`, and `headline_outlier=` explain how to
-  use the bounded evidence.
+- Helpers print machine-readable lines; `answer=` is the result. Companion keys: `interpretation_hint=`, `stop_rule=`, `headline_outlier=`.
 - `filter_caveat=`: the SDK result is grounded, but a separate aggregate index may count differently.
 - `sample_scope=`: structured JSON showing `requested`, effective cap, actual
   rows/runs observed, strategy, and `project_exhaustive`. Treat sampled outputs
@@ -146,11 +152,22 @@ auto-cap at 75 recent + 75 oldest and print `sample_scope=`/`sample_caveat=`.
 Weave trace/eval counts.
 
 `count-runs` — server-side lazy count. `--by-sweep` or `--by-group` breaks
-down by sweep or group. `--include-ungrouped` includes runs outside any group.
+down by sweep or group (enumerates sweeps/groups in the project; capped).
+`--include-ungrouped` includes runs outside any group. Sweep command details:
+`SWEEPS.md` § Sweep-scoped run_ops commands.
+
+`aggregate-named-sweeps` — per named sweep: projected summary metric stats plus
+`state_counts` from the fetched run sample (default ``--limit`` 500 runs per
+sweep). Honors common ``--state`` (e.g. ``finished``). ``metric_stats``
+aggregates the same fetched runs as ``state_counts`` (sample-scoped). Output
+includes ``state_counts_scope: "fetched_sample"`` — counts and stats cover the
+fetched slice only. Resolves sweeps by name via direct lookup or filtered
+``$in`` query. See `SWEEPS.md` § Sweep-scoped run_ops commands.
 
 ```bash
 python $R project-snapshot --entity E --project P --sample 12          # add --include-weave for Weave counts
 python $R count-runs --entity E --project P --state finished           # exact lazy count; --by-sweep | --by-group --include-ungrouped
+python $R aggregate-named-sweeps --entity E --project P --sweep-name SWEEP_A --sweep-name SWEEP_B --metric METRIC
 ```
 
 ### Bounded metadata recipes

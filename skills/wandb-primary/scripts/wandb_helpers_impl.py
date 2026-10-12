@@ -35,7 +35,12 @@ Usage:
 
 from __future__ import annotations
 
+import math
+import statistics
+from collections import Counter
 from typing import Any
+
+DEFAULT_AGGREGATE_NAMED_SWEEPS_LIMIT = 500
 
 # ---------------------------------------------------------------------------
 # API factory
@@ -141,9 +146,14 @@ def probe_project(api: Any, path: str, sample_size: int = 3) -> dict[str, Any]:
         import logging as _logging
 
         import weave as _weave  # local import — weave may not always be present
-        from weave.trace_server.trace_server_interface import (
-            CallsQueryStatsReq as _StatsReq,
-        )
+        try:
+            from weave.shared.trace_server_interface import (
+                CallsQueryStatsReq as _StatsReq,
+            )
+        except ImportError:  # weave < 0.53
+            from weave.trace_server.trace_server_interface import (
+                CallsQueryStatsReq as _StatsReq,
+            )
 
         _logging.getLogger("weave").setLevel(_logging.ERROR)
         _client = _weave.init(path)
@@ -292,8 +302,6 @@ def fetch_runs(
     import json as _json
     import os as _os
 
-    import requests
-
     entity, project = path.split("/", 1)
 
     # Build the query with specific metric keys
@@ -309,6 +317,8 @@ def fetch_runs(
     rows: list[dict[str, Any]] = []
     cursor = None
     remaining = limit
+    import requests
+
     base_url = _os.environ.get("WANDB_BASE_URL", "https://api.wandb.ai").rstrip("/")
     checkpoint = open(jsonl_path, "a", encoding="utf-8") if jsonl_path else None
     try:
@@ -339,7 +349,7 @@ def fetch_runs(
             if "errors" in data:
                 raise RuntimeError(f"GraphQL errors: {data['errors']}")
 
-            runs_data = data.get("data", {}).get("project", {}).get("runs", {})
+            runs_data = data.get("data", {}).get("project", {}).get("runs", {}) or {}
             edges = runs_data.get("edges", [])
             page_info = runs_data.get("pageInfo", {})
 
@@ -388,6 +398,172 @@ def fetch_runs(
             checkpoint.close()
 
     return rows[:limit]
+
+
+def _sweep_direct_lookup_failed(exc: BaseException) -> bool:
+    """True when ``api.sweep(path/name)`` failed because the name is not a direct slug."""
+    if type(exc).__name__ == "CommError":
+        msg = str(exc).lower()
+        return "could not find" in msg or "not found" in msg
+    return isinstance(exc, ValueError)
+
+
+def _sweep_lookup_aliases(sweep: Any) -> set[str]:
+    """Identifiers that can resolve a sweep from user input (slug, id, config.name)."""
+    aliases: set[str] = set()
+    name = str(getattr(sweep, "name", "") or "")
+    sweep_id = str(getattr(sweep, "id", "") or "")
+    if name:
+        aliases.add(name)
+    if sweep_id:
+        aliases.add(sweep_id)
+    config = getattr(sweep, "config", None)
+    if isinstance(config, dict):
+        config_name = config.get("name")
+        if config_name is not None and str(config_name):
+            aliases.add(str(config_name))
+    return aliases
+
+
+def resolve_sweeps_by_names(api: Any, path: str, names: list[str]) -> dict[str, Any]:
+    """Map sweep display names to Sweep objects for an explicit name list.
+
+    Tries ``api.sweep("entity/project/NAME")`` per name first, then queries
+    ``project.sweeps()`` with a filtered ``$in`` lookup for any remaining names.
+    The filter matches both sweep slugs (``name``) and configured display names
+    (``config.name``), since ``Sweep.name`` can be either.
+    """
+    entity, project = path.split("/", 1)
+    wanted = list(dict.fromkeys(names))
+    found: dict[str, Any] = {}
+    for name in wanted:
+        try:
+            found[name] = api.sweep(f"{path}/{name}")
+        except Exception as exc:
+            if _sweep_direct_lookup_failed(exc):
+                continue
+            raise
+    remaining = [n for n in wanted if n not in found]
+    if remaining:
+        filters = {
+            "$or": [
+                {"config.name": {"$in": remaining}},
+                {"name": {"$in": remaining}},
+            ]
+        }
+        for sweep in api.project(project, entity=entity).sweeps(
+            filters=filters,
+            per_page=max(len(remaining), 1),
+        ):
+            aliases = _sweep_lookup_aliases(sweep)
+            for req in remaining:
+                if req in found:
+                    continue
+                if req in aliases:
+                    found[req] = sweep
+        missing = [n for n in remaining if n not in found]
+        if missing:
+            raise ValueError(f"Could not resolve sweeps: {sorted(missing)}")
+    return found
+
+
+def _state_counts_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
+    """Count run states in a fetched row sample (omits states with zero rows)."""
+    counts = Counter(str(row.get("state") or "unknown") for row in rows)
+    return {state: count for state, count in counts.items() if count}
+
+
+def _coerce_metric_float(value: Any) -> float | None:
+    """Return a finite float for numeric summary metrics, else None."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(number) else number
+
+
+def _metric_stats_for_key(
+    rows: list[dict[str, Any]], key: str
+) -> dict[str, float | int | None]:
+    """Mean/stdev over coercible numeric values; skip strings, tables, etc."""
+    vals: list[float] = []
+    non_numeric_skipped = 0
+    for row in rows:
+        raw = row.get(key)
+        if raw is None:
+            continue
+        coerced = _coerce_metric_float(raw)
+        if coerced is None:
+            non_numeric_skipped += 1
+        else:
+            vals.append(coerced)
+
+    if vals:
+        stats: dict[str, float | int | None] = {
+            "mean": statistics.fmean(vals),
+            "stdev": statistics.stdev(vals) if len(vals) >= 2 else None,
+            "n": len(vals),
+        }
+    else:
+        stats = {"mean": None, "stdev": None, "n": 0}
+    if non_numeric_skipped:
+        stats["non_numeric_skipped"] = non_numeric_skipped
+    return stats
+
+
+def aggregate_named_sweeps(
+    api: Any,
+    path: str,
+    sweep_names: list[str],
+    metric_keys: list[str],
+    *,
+    limit_per_sweep: int = DEFAULT_AGGREGATE_NAMED_SWEEPS_LIMIT,
+    state: str | None = None,
+) -> list[dict[str, Any]]:
+    """Per named sweep: sample state counts + projected summary metric stats.
+
+    Uses one ``fetch_runs`` call per sweep (GraphQL field selection) — not per-run
+    SDK hydration and not separate per-state count queries.
+
+    ``state_counts`` and ``metric_stats`` use the same fetched run rows (up to
+    ``limit_per_sweep`` per sweep; sample-scoped, not full sweep totals). Pass
+    ``state`` (e.g. ``"finished"``) to exclude non-finished runs from both.
+    Check ``state_counts_scope`` (always ``"fetched_sample"``) before reporting
+    counts; say "in the fetched sample" or use ``count-runs`` when exact totals
+    are required.
+
+    ``metric_stats`` aggregates only numeric summary values. Non-numeric values
+    (strings, table refs, nested JSON) are skipped; see ``non_numeric_skipped``
+    per metric when any rows were dropped.
+    """
+    sweeps = resolve_sweeps_by_names(api, path, sweep_names)
+    results: list[dict[str, Any]] = []
+    for name in sweep_names:
+        sweep = sweeps[name]
+        sid = sweep.id
+        filters: dict[str, Any] = {"sweep": sid}
+        if state:
+            filters["state"] = state
+        rows = fetch_runs(
+            api,
+            path,
+            metric_keys=metric_keys,
+            filters=filters,
+            limit=limit_per_sweep,
+        )
+        state_counts = _state_counts_from_rows(rows)
+        metric_stats = {key: _metric_stats_for_key(rows, key) for key in metric_keys}
+        results.append(
+            {
+                "sweep_name": name,
+                "sweep_id": sid,
+                "state_counts": state_counts,
+                "state_counts_scope": "fetched_sample",
+                "metric_stats": metric_stats,
+                "runs_fetched": len(rows),
+            }
+        )
+    return results
 
 
 # ---------------------------------------------------------------------------

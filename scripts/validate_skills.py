@@ -24,6 +24,9 @@ SECRET_PATTERNS = (
     re.compile(r"(av-team|grpo-cuda|wandb-smle|weave-improver1|bdd100k)"),
     re.compile(r"\b(wbagent|wb_agent|WBAF|wbaf)\b"),
     re.compile(r"(weave-improver1|rollout|ruler_score_group)"),
+    re.compile(r"\b(ARIA|WANDB_ARIA_\w+|_wb_agent|ariaActionInput|ARIATriggeredAction)\b"),
+    re.compile(r"(request_network_access|wandb_web_page_state|IN_CHAT_PANELS|PDF_GENERATION)"),
+    re.compile(r"[\s`'\"(]/workspace/"),
 )
 
 STALE_REPORT_PATTERNS = (

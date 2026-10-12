@@ -31,6 +31,13 @@ from typing import Any
 
 logging.getLogger("weave").setLevel(logging.ERROR)
 
+import weave
+
+try:
+    from weave.shared.agents import types as at
+except ImportError:  # weave < 0.53
+    from weave.trace_server.agents import types as at
+
 # Server-enforced ceiling on AgentConversationChatReq.limit (Le(le=50)).
 _PAGE_LIMIT = 50
 _CONVERSATION_PATH = "/agents/conversations/chat"
@@ -56,7 +63,6 @@ def _server(pid: str) -> Any:
     `_generic_request` lives on the remote binding; the cache wrapper doesn't
     expose the agents methods, so reach through `_next_trace_server`.
     """
-    import weave
 
     client = weave.init(pid)
     server = getattr(client.server, "_next_trace_server", client.server)
@@ -106,7 +112,6 @@ def _print_turn(turn: Any, index: int, total: int, full: bool) -> tuple[int, int
 
 
 def _cmd_conversation(args: argparse.Namespace) -> None:
-    from weave.trace_server.agents import types as at
 
     pid = _resolve_path(args.path)
     server = _server(pid)
@@ -145,7 +150,6 @@ def _cmd_conversation(args: argparse.Namespace) -> None:
 
 
 def _cmd_trace(args: argparse.Namespace) -> None:
-    from weave.trace_server.agents import types as at
 
     pid = _resolve_path(args.path)
     server = _server(pid)

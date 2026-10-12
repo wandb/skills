@@ -28,16 +28,47 @@ from copy import deepcopy
 
 import wandb
 from wandb.sdk.launch._launch_add import launch_add
+try:
+    from wandb.sdk.launch.api import LaunchApi
+except ImportError:  # wandb < 0.30
+    from wandb import InternalApi as LaunchApi
 from wandb.sdk.launch.create_job import _create_job
 
 DEFAULT_BASE_IMAGE = "python:3.11-slim"
+# DEFAULT_BASE_IMAGE is amd64-only and GPU-cluster oriented. Local Docker
+# queues run on whatever machine the user has (often arm64 laptops), so they
+# default to the official multi-arch Python image plus a dependency bootstrap.
+LOCAL_DEFAULT_BASE_IMAGE = "python:3.11"
+LOCAL_CONTAINER_QUEUE_TYPE = "local-container"
+_BOOTSTRAP_FILENAME = "_wandb_launch_bootstrap.py"
+# Installs requirements.txt with an argument list — Launch mangles quoted
+# shell entrypoints — then execs the real entrypoint.
+_BOOTSTRAP_SOURCE = '''"""Install packaged requirements, then exec the real entrypoint."""
+import os
+import subprocess
+import sys
+
+if os.path.exists("requirements.txt"):
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--no-cache-dir", "-r", "requirements.txt"],
+        check=True,
+    )
+argv = sys.argv[1:]
+if not argv:
+    raise SystemExit("usage: _wandb_launch_bootstrap.py <entrypoint> [args...]")
+if argv[0] == "python":
+    argv[0] = sys.executable
+os.execvp(argv[0], argv)
+'''
 ACTIVE_AGENT_STATUSES = {"POLLING", "RUNNING"}
 TERMINAL_RUN_STATES = {"finished", "failed", "crashed", "killed"}
 WAIT_FOR_MODES = {"queued", "launched", "done"}
 
+
 # ---------------------------------------------------------------------------
 # URL parsing and run analysis
 # ---------------------------------------------------------------------------
+
 
 def parse_run_url(url):
     """Extract entity, project, and run_id from a W&B run URL.
@@ -64,7 +95,6 @@ def parse_run_url(url):
 # ---------------------------------------------------------------------------
 # Queue management
 # ---------------------------------------------------------------------------
-
 
 
 def _gql_query(api, query_str, variables=None):
@@ -133,9 +163,9 @@ def _extract_queue_resources(default_resource_config):
         return {"namespace": None, "limits": {}, "requests": {}}
 
     spec = k8s.get("spec") or {}
-    containers = (
-        ((spec.get("template") or {}).get("spec") or {}).get("containers") or []
-    )
+    containers = ((spec.get("template") or {}).get("spec") or {}).get(
+        "containers"
+    ) or []
     resources = (containers[0].get("resources") if containers else {}) or {}
     return {
         "namespace": k8s.get("namespace"),
@@ -210,7 +240,7 @@ def _fetch_queues(entity):
     active_agents_by_queue = {}
     for a in agents:
         if a.get("agentStatus") in ACTIVE_AGENT_STATUSES:
-            for qid in (a.get("runQueues") or []):
+            for qid in a.get("runQueues") or []:
                 active_agents_by_queue[qid] = active_agents_by_queue.get(qid, 0) + 1
 
     # Get current user's numeric ID
@@ -296,6 +326,19 @@ def get_queue(entity, queue_name):
     return queue
 
 
+def _normalize_queue_type(value):
+    return str(value or "").strip().lower().replace("_", "-")
+
+
+def _is_local_container_queue(entity, queue_name):
+    """Best-effort check for a local Docker queue; False when the lookup fails."""
+    try:
+        queue = wandb.Api().run_queue(entity=entity, name=queue_name)
+        return _normalize_queue_type(queue.type) == LOCAL_CONTAINER_QUEUE_TYPE
+    except Exception:
+        return False
+
+
 def make_k8s_queue_config(namespace="wandb-launch", gpus=1, cpu=8, memory="80Gi"):
     """Build the default K8s resource config for a launch queue."""
     return {
@@ -304,13 +347,23 @@ def make_k8s_queue_config(namespace="wandb-launch", gpus=1, cpu=8, memory="80Gi"
             "spec": {
                 "template": {
                     "spec": {
-                        "containers": [{
-                            "name": "train",
-                            "resources": {
-                                "limits": {"nvidia.com/gpu": str(gpus), "cpu": str(cpu), "memory": memory},
-                                "requests": {"nvidia.com/gpu": str(gpus), "cpu": str(cpu), "memory": memory},
-                            },
-                        }],
+                        "containers": [
+                            {
+                                "name": "train",
+                                "resources": {
+                                    "limits": {
+                                        "nvidia.com/gpu": str(gpus),
+                                        "cpu": str(cpu),
+                                        "memory": memory,
+                                    },
+                                    "requests": {
+                                        "nvidia.com/gpu": str(gpus),
+                                        "cpu": str(cpu),
+                                        "memory": memory,
+                                    },
+                                },
+                            }
+                        ],
                     }
                 }
             },
@@ -318,22 +371,43 @@ def make_k8s_queue_config(namespace="wandb-launch", gpus=1, cpu=8, memory="80Gi"
     }
 
 
-def create_queue(name, entity, namespace="wandb-launch", gpus=1, cpu=8, memory="80Gi", prioritization=True):
-    """Create a W&B launch queue with optional prioritization."""
+def create_queue(
+    name,
+    entity,
+    queue_type="kubernetes",
+    namespace="wandb-launch",
+    gpus=1,
+    cpu=8,
+    memory="80Gi",
+    prioritization=True,
+):
+    """Create a W&B launch queue (Kubernetes cluster or local Docker machine)."""
     api = wandb.Api()
-    config = make_k8s_queue_config(namespace, gpus=gpus, cpu=cpu, memory=memory)
+    if queue_type == LOCAL_CONTAINER_QUEUE_TYPE:
+        # A local Docker queue needs no resource defaults; the agent on the
+        # user's machine supplies the compute.
+        config = {}
+    elif queue_type == "kubernetes":
+        config = make_k8s_queue_config(namespace, gpus=gpus, cpu=cpu, memory=memory)
+    else:
+        raise ValueError(f"Unknown queue type: {queue_type}")
     queue = api.create_run_queue(
         name=name,
-        type="kubernetes",
+        type=queue_type,
         entity=entity,
         config=config,
         prioritization_mode="V0" if prioritization else "DISABLED",
     )
-    print(f"Created queue: {queue.name}, prioritization: {queue.prioritization_mode}")
+    print(
+        f"Created {queue_type} queue: {queue.name}, "
+        f"prioritization: {queue.prioritization_mode}"
+    )
     return queue
 
 
-def recreate_queue_with_prioritization(name, entity, namespace="wandb-launch", **kwargs):
+def recreate_queue_with_prioritization(
+    name, entity, namespace="wandb-launch", **kwargs
+):
     """Delete and recreate a queue to enable prioritization.
 
     Prioritization cannot be toggled on an existing queue — it must be recreated.
@@ -344,7 +418,6 @@ def recreate_queue_with_prioritization(name, entity, namespace="wandb-launch", *
     q.delete()
     print(f"Deleted queue: {name}")
     return create_queue(name, entity, namespace, prioritization=True, **kwargs)
-
 
 
 def inspect_queue(name, entity):
@@ -388,7 +461,9 @@ def _normalize_requirements(requirements, code_dir, ensure_wandb=True):
         lines = [str(req).strip() for req in requirements if str(req).strip()]
 
     if ensure_wandb:
-        has_wandb = any(re.match(r"(?i)^wandb(?:\[.*\])?(?:[<>=!~ ].*)?$", line) for line in lines)
+        has_wandb = any(
+            re.match(r"(?i)^wandb(?:\[.*\])?(?:[<>=!~ ].*)?$", line) for line in lines
+        )
         if not has_wandb:
             lines.append("wandb")
 
@@ -405,7 +480,9 @@ def _copy_code_files(code_files, temp_dir):
         rel = file_path if not os.path.isabs(file_path) else os.path.basename(file_path)
         rel = os.path.normpath(rel)
         if rel.startswith("..") or os.path.isabs(rel):
-            raise ValueError(f"Code file must be inside the working directory: {file_path}")
+            raise ValueError(
+                f"Code file must be inside the working directory: {file_path}"
+            )
         dst = os.path.join(temp_dir, rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)
@@ -419,11 +496,25 @@ def _require_queue_name(queue_name):
         )
 
 
-def _resolve_base_image(base_image):
+def _resolve_base_image(base_image, local=False):
     if base_image:
         return base_image
-    print(f"Using default base image: {DEFAULT_BASE_IMAGE}")
-    return DEFAULT_BASE_IMAGE
+    default = LOCAL_DEFAULT_BASE_IMAGE if local else DEFAULT_BASE_IMAGE
+    print(f"Using default base image: {default}")
+    return default
+
+
+def _write_bootstrap_entrypoint(code_dir, entrypoint):
+    """Package the pip-install bootstrap and wrap the entrypoint with it.
+
+    Local Docker queues run plain images with no builder, so nothing installs
+    requirements.txt on its own; the bootstrap does, then execs the original
+    entrypoint. Returns the wrapped entrypoint string.
+    """
+    with open(os.path.join(code_dir, _BOOTSTRAP_FILENAME), "w") as f:
+        f.write(_BOOTSTRAP_SOURCE)
+    args = _entry_point_args(entrypoint) or []
+    return " ".join(["python", _BOOTSTRAP_FILENAME, *args])
 
 
 def _normalize_launch_resource_args(resource_args):
@@ -477,7 +568,9 @@ def _resolve_resource_args(
             "queue defaults."
         )
 
-    default_resources = ((queue or {}).get("limits") or (queue or {}).get("requests") or {})
+    default_resources = (
+        (queue or {}).get("limits") or (queue or {}).get("requests") or {}
+    )
     return _make_resource_args(
         resolved_namespace,
         gpus=default_resources.get("nvidia.com/gpu", 1) if gpus is None else gpus,
@@ -497,6 +590,7 @@ def _add_resource_args(launch_kwargs, **kwargs):
 # Resource args for explicit resource overrides
 # ---------------------------------------------------------------------------
 
+
 def _make_resource_args(namespace, gpus=1, cpu=8, memory="80Gi", k8s_secrets=None):
     """Build resource_args for launch_add().
 
@@ -511,25 +605,29 @@ def _make_resource_args(namespace, gpus=1, cpu=8, memory="80Gi", k8s_secrets=Non
         k8s_secrets: Dict mapping env var name to (secret_name, secret_key) tuples.
                      Example: {"HF_TOKEN": ("hf-token", "token")}
     """
-    env = [{
-        "name": "WANDB_API_KEY",
-        "valueFrom": {
-            "secretKeyRef": {
-                "key": "password",
-                "name": "wandb-api-key-wandb-launch",
-            }
-        },
-    }]
-    for env_name, (secret_name, secret_key) in (k8s_secrets or {}).items():
-        env.append({
-            "name": env_name,
+    env = [
+        {
+            "name": "WANDB_API_KEY",
             "valueFrom": {
                 "secretKeyRef": {
-                    "name": secret_name,
-                    "key": secret_key,
+                    "key": "password",
+                    "name": "wandb-api-key-wandb-launch",
                 }
             },
-        })
+        }
+    ]
+    for env_name, (secret_name, secret_key) in (k8s_secrets or {}).items():
+        env.append(
+            {
+                "name": env_name,
+                "valueFrom": {
+                    "secretKeyRef": {
+                        "name": secret_name,
+                        "key": secret_key,
+                    }
+                },
+            }
+        )
 
     return {
         "kubernetes": {
@@ -537,14 +635,24 @@ def _make_resource_args(namespace, gpus=1, cpu=8, memory="80Gi", k8s_secrets=Non
             "spec": {
                 "template": {
                     "spec": {
-                        "containers": [{
-                            "name": "train",
-                            "env": env,
-                            "resources": {
-                                "limits": {"nvidia.com/gpu": str(gpus), "cpu": str(cpu), "memory": memory},
-                                "requests": {"nvidia.com/gpu": str(gpus), "cpu": str(cpu), "memory": memory},
-                            },
-                        }]
+                        "containers": [
+                            {
+                                "name": "train",
+                                "env": env,
+                                "resources": {
+                                    "limits": {
+                                        "nvidia.com/gpu": str(gpus),
+                                        "cpu": str(cpu),
+                                        "memory": memory,
+                                    },
+                                    "requests": {
+                                        "nvidia.com/gpu": str(gpus),
+                                        "cpu": str(cpu),
+                                        "memory": memory,
+                                    },
+                                },
+                            }
+                        ]
                     }
                 }
             },
@@ -555,6 +663,7 @@ def _make_resource_args(namespace, gpus=1, cpu=8, memory="80Gi", k8s_secrets=Non
 # ---------------------------------------------------------------------------
 # Job submission
 # ---------------------------------------------------------------------------
+
 
 def submit_code_artifact_job(
     code_files,
@@ -587,9 +696,14 @@ def submit_code_artifact_job(
         queue_name: Launch queue name. Run list_queues(entity) first.
         namespace: K8s namespace. Only needed when overriding resources.
         job_name: Name for the job artifact.
-        base_image: Docker base image. Defaults to python:3.11-slim.
+        base_image: Docker base image. Defaults to DEFAULT_BASE_IMAGE, except on
+                    local-container queues, which get LOCAL_DEFAULT_BASE_IMAGE
+                    (multi-arch) plus a pip bootstrap that installs
+                    requirements.txt before the entrypoint runs.
         requirements: List of pip packages to install in the container.
-                      Only include packages NOT already in the base image.
+                      Only include packages NOT already in the base image; on a
+                      local-container queue that means every package the code
+                      imports.
                       _create_job reads requirements.txt directly — it does NOT inspect the venv.
         ensure_wandb: Add wandb to requirements.txt when missing.
         config: Dict of hyperparameters to pass to the run.
@@ -602,14 +716,17 @@ def submit_code_artifact_job(
         Status dict with queue item, run URL, run state, launched, and done.
     """
     _require_queue_name(queue_name)
-    resolved_base_image = _resolve_base_image(base_image)
+    local_queue = _is_local_container_queue(entity, queue_name)
+    resolved_base_image = _resolve_base_image(base_image, local=local_queue)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         _copy_code_files(code_files, temp_dir)
         _normalize_requirements(requirements, temp_dir, ensure_wandb=ensure_wandb)
+        if local_queue:
+            entrypoint = _write_bootstrap_entrypoint(temp_dir, entrypoint)
 
         # Step 1: Create/update the job artifact
-        api = wandb.InternalApi()
+        api = LaunchApi()
         kwargs = dict(
             api=api,
             job_type="code",
@@ -648,7 +765,9 @@ def submit_code_artifact_job(
     queued_run = launch_add(**launch_kwargs)
     print("Queued! Run ID will be assigned when started.")
     print(f"Queue item ID: {queued_run.id}")
-    print(f"To check status later: check_launch('{entity}', '{project}', '{queue_name}', '{queued_run.id}')")
+    print(
+        f"To check status later: check_launch('{entity}', '{project}', '{queue_name}', '{queued_run.id}')"
+    )
     return wait_for_launch(
         entity,
         project,
@@ -663,6 +782,7 @@ def submit_code_artifact_job(
 # ---------------------------------------------------------------------------
 # Run reproduction
 # ---------------------------------------------------------------------------
+
 
 def inspect_job_artifact(artifact_path):
     """
@@ -710,6 +830,7 @@ def inspect_job_artifact(artifact_path):
 # ---------------------------------------------------------------------------
 # Code artifact download / edit / re-upload
 # ---------------------------------------------------------------------------
+
 
 def download_code_artifact(job_artifact_path):
     """Download the source code from a job artifact.
@@ -825,8 +946,12 @@ def create_and_launch_modified_job(
         queue_name: Launch queue name. Run list_queues(entity) first.
         namespace: K8s namespace. Only needed when overriding resources.
         job_name: Name for the job artifact.
-        base_image: Docker base image. Defaults to python:3.11-slim.
-        requirements: List of pip packages (only those NOT in base image).
+        base_image: Docker base image. Defaults to DEFAULT_BASE_IMAGE, except on
+                    local-container queues, which get LOCAL_DEFAULT_BASE_IMAGE
+                    (multi-arch) plus a pip bootstrap that installs
+                    requirements.txt before the entrypoint runs.
+        requirements: List of pip packages (only those NOT in base image; on a
+                      local-container queue, every package the code imports).
         ensure_wandb: Add wandb to requirements.txt when missing.
         config: Dict of run config overrides.
         gpus/cpu/memory: Optional resource overrides. Omit to use queue defaults.
@@ -836,13 +961,16 @@ def create_and_launch_modified_job(
         poll_seconds: Seconds between status checks.
     """
     _require_queue_name(queue_name)
-    resolved_base_image = _resolve_base_image(base_image)
+    local_queue = _is_local_container_queue(entity, queue_name)
+    resolved_base_image = _resolve_base_image(base_image, local=local_queue)
     _normalize_requirements(requirements, code_dir, ensure_wandb=ensure_wandb)
+    if local_queue:
+        entrypoint = _write_bootstrap_entrypoint(code_dir, entrypoint)
 
     # Create job artifact
-    api_internal = wandb.InternalApi()
+    api = LaunchApi()
     kwargs = dict(
-        api=api_internal,
+        api=api,
         job_type="code",
         path=code_dir,
         entity=entity,
@@ -879,7 +1007,9 @@ def create_and_launch_modified_job(
     queued_run = launch_add(**launch_kwargs)
     print("Queued modified job!")
     print(f"Queue item ID: {queued_run.id}")
-    print(f"To check status: check_launch('{entity}', '{project}', '{queue_name}', '{queued_run.id}')")
+    print(
+        f"To check status: check_launch('{entity}', '{project}', '{queue_name}', '{queued_run.id}')"
+    )
     return wait_for_launch(
         entity,
         project,
@@ -961,7 +1091,9 @@ def launch_job_artifact(
     queued_run = launch_add(**launch_kwargs)
     print(f"Queued job from artifact: {artifact_path}")
     print(f"Queue item ID: {queued_run.id}")
-    print(f"To check status later: check_launch('{entity}', '{project}', '{queue_name}', '{queued_run.id}')")
+    print(
+        f"To check status later: check_launch('{entity}', '{project}', '{queue_name}', '{queued_run.id}')"
+    )
     return wait_for_launch(
         entity,
         project,
@@ -1138,17 +1270,22 @@ def _print_launch_ui_links(entity, project, queue_id, item=None, agent=None):
         print(f"  Job version:  {job_url}")
 
 
+def _queue_item_issues(item):
+    entries = []
+    error = (item or {}).get("error")
+    if error and error.get("message"):
+        entries.append(("Error", error))
+    for warning in (item or {}).get("warnings") or []:
+        if warning and warning.get("message"):
+            entries.append(("Warning", warning))
+    return entries
+
+
 def _print_launch_issues(item):
     if not item:
         return
 
-    entries = []
-    error = item.get("error")
-    if error and error.get("message"):
-        entries.append(("Error", error))
-    for warning in item.get("warnings") or []:
-        if warning and warning.get("message"):
-            entries.append(("Warning", warning))
+    entries = _queue_item_issues(item)
 
     if not entries:
         print("Issues: none reported on the queue item")
@@ -1164,15 +1301,57 @@ def _print_launch_issues(item):
         print(f"  {kind} stage={info.get('stage')}{suffix}: {message}")
 
 
+def _print_error_log_tail(entity, item, agent, max_lines=40):
+    """Print the tail of any error/warning logs attached to a queue item.
+
+    Launch stores these files on the agent's run in ENTITY/model-registry;
+    the agent's name is that run's id. Printing them here saves a whole
+    debugging round-trip when a job dies before its W&B run starts.
+    """
+    if not item:
+        return
+    issues = [item.get("error"), *(item.get("warnings") or [])]
+    file_paths = []
+    for info in issues:
+        if info:
+            file_paths.extend(info.get("filePaths") or [])
+    agent_name = (agent or {}).get("name")
+    if not file_paths or not agent_name:
+        return
+    try:
+        agent_run = wandb.Api().run(
+            f"{entity}/{DEFAULT_LAUNCH_PROJECT_NAME}/{agent_name}"
+        )
+    except Exception as e:
+        print(f"(error-log fetch skipped: {e})")
+        return
+    for path in file_paths:
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                with agent_run.file(path).download(root=temp_dir, replace=True) as f:
+                    lines = f.read().splitlines()
+            tail = lines[-max_lines:]
+            print(f"--- {path} (last {len(tail)} of {len(lines)} lines) ---")
+            for line in tail:
+                print(line)
+        except Exception as e:
+            print(f"(could not fetch {path}: {e})")
+
+
 def _is_terminal_run_state(run_state):
     return str(run_state or "").lower() in TERMINAL_RUN_STATES
 
 
-def check_launch(entity, project, queue_name, run_queue_item_id):
+def check_launch(entity, project, queue_name, run_queue_item_id, verbose=True):
     """Check one Launch queue item and its associated W&B run.
 
     Queue item state and W&B run state are different. Successful Launch queue
     items usually remain CLAIMED; use launched/done/run_state for execution.
+
+    verbose=False trims repeat-poll output (the UI-links block, the CLAIMED
+    explainer, the no-issues line) so polling loops don't reprint the same
+    text every few seconds; state, issues, error tails, and run status always
+    print.
 
     Returns:
         Dict with keys: queue_item_id, queue_state, launched, done, run_id,
@@ -1199,7 +1378,7 @@ def check_launch(entity, project, queue_name, run_queue_item_id):
         # Fallback for old servers that do not expose runQueueItem by id.
         from wandb.apis.public import QueuedRun
 
-        qr = QueuedRun(api.client, entity, project, queue_name, run_queue_item_id)
+        qr = QueuedRun(api._service_api, entity, project, queue_name, run_queue_item_id)
         try:
             state = qr.state
             item = qr._get_item()
@@ -1219,9 +1398,12 @@ def check_launch(entity, project, queue_name, run_queue_item_id):
         "check_command": _check_command(entity, project, queue_name, run_queue_item_id),
     }
     print(f"Queue item state: {state}")
-    _print_launch_ui_links(entity, project, queue_id, item=item, agent=agent)
-    _print_launch_issues(item)
-    if state == "claimed":
+    if verbose:
+        _print_launch_ui_links(entity, project, queue_id, item=item, agent=agent)
+    if verbose or _queue_item_issues(item):
+        _print_launch_issues(item)
+    _print_error_log_tail(entity, item, agent)
+    if state == "claimed" and verbose:
         print(
             "CLAIMED means the agent acknowledged the queue item and assigned a run; "
             "check the associated run state for execution status."
@@ -1247,8 +1429,11 @@ def check_launch(entity, project, queue_name, run_queue_item_id):
                     result["done"] = _is_terminal_run_state(run.state)
                     print(f"Run state: {run.state}")
                     # Print key metrics from summary
-                    summary = {k: v for k, v in run.summary.items()
-                               if not k.startswith("_") and not isinstance(v, dict)}
+                    summary = {
+                        k: v
+                        for k, v in run.summary.items()
+                        if not k.startswith("_") and not isinstance(v, dict)
+                    }
                     if summary:
                         print(f"Metrics: {json.dumps(summary, indent=2, default=str)}")
                 except Exception:
@@ -1261,7 +1446,9 @@ def check_launch(entity, project, queue_name, run_queue_item_id):
     elif state == "pending":
         print("Job is still waiting in queue")
     elif state == "failed":
-        print("Job failed — check the launch agent logs")
+        print(
+            "Job failed — error-log tail above when available; agent logs have full detail"
+        )
 
     return result
 
@@ -1311,14 +1498,17 @@ def wait_for_launch(
 
     deadline = time.time() + timeout_seconds
     last_status = None
+    first_poll = True
     while True:
-        last_status = check_launch(entity, project, queue_name, run_queue_item_id)
+        # Full output (UI links etc.) once; later polls print only what changed.
+        last_status = check_launch(
+            entity, project, queue_name, run_queue_item_id, verbose=first_poll
+        )
+        first_poll = False
         if last_status is None:
             raise RuntimeError(f"Could not find queue item {run_queue_item_id}")
 
-        if wait_for == "launched" and (
-            last_status["launched"] or last_status["done"]
-        ):
+        if wait_for == "launched" and (last_status["launched"] or last_status["done"]):
             return last_status
         if wait_for == "done" and last_status["done"]:
             return last_status
@@ -1430,7 +1620,9 @@ def relaunch_run(
     queued_run = launch_add(**launch_kwargs)
     print(f"Queued reproduction of run {run_path}")
     print(f"Queue item ID: {queued_run.id}")
-    print(f"To check status later: check_launch('{entity}', '{project}', '{queue_name}', '{queued_run.id}')")
+    print(
+        f"To check status later: check_launch('{entity}', '{project}', '{queue_name}', '{queued_run.id}')"
+    )
     return wait_for_launch(
         entity,
         project,
@@ -1446,6 +1638,7 @@ def relaunch_run(
 # CLI entry point — run directly instead of writing wrapper scripts
 # ---------------------------------------------------------------------------
 
+
 def _cli():
     """CLI for common launch operations.
 
@@ -1460,11 +1653,19 @@ def _cli():
     parser = argparse.ArgumentParser(description="W&B Launch helpers CLI")
     sub = parser.add_subparsers(dest="command")
 
-    p_re = sub.add_parser("relaunch", help="Relaunch a run with optional config overrides")
+    p_re = sub.add_parser(
+        "relaunch", help="Relaunch a run with optional config overrides"
+    )
     p_re.add_argument("run_url", help="W&B run URL or entity/project/run_id")
-    p_re.add_argument("--config", type=json.loads, default=None,
-                       help='JSON config overrides, e.g. \'{"epochs": 100}\'')
-    p_re.add_argument("--queue", required=True, help="Queue name. Run list-queues first.")
+    p_re.add_argument(
+        "--config",
+        type=json.loads,
+        default=None,
+        help="JSON config overrides, e.g. '{\"epochs\": 100}'",
+    )
+    p_re.add_argument(
+        "--queue", required=True, help="Queue name. Run list-queues first."
+    )
     p_re.add_argument(
         "--wait-for",
         choices=sorted(WAIT_FOR_MODES),
@@ -1475,10 +1676,21 @@ def _cli():
     p_lq = sub.add_parser("list-queues", help="List launch queues for an entity")
     p_lq.add_argument("entity", help="W&B entity name")
 
-    p_cq = sub.add_parser("create-queue", help="Create a Kubernetes launch queue")
+    p_cq = sub.add_parser(
+        "create-queue", help="Create a launch queue (Kubernetes or local Docker)"
+    )
     p_cq.add_argument("entity", help="W&B entity name")
     p_cq.add_argument("--queue", default="wandb-launch-k8s", help="Queue name")
-    p_cq.add_argument("--namespace", default="wandb-launch", help="Kubernetes namespace")
+    p_cq.add_argument(
+        "--type",
+        dest="queue_type",
+        choices=["kubernetes", LOCAL_CONTAINER_QUEUE_TYPE],
+        default="kubernetes",
+        help="Queue type; local-container ignores the Kubernetes options below",
+    )
+    p_cq.add_argument(
+        "--namespace", default="wandb-launch", help="Kubernetes namespace"
+    )
     p_cq.add_argument("--gpus", type=int, default=1, help="GPUs per job")
     p_cq.add_argument("--cpu", type=int, default=8, help="CPUs per job")
     p_cq.add_argument("--memory", default="80Gi", help="Memory per job")
@@ -1506,6 +1718,7 @@ def _cli():
         create_queue(
             name=args.queue,
             entity=args.entity,
+            queue_type=args.queue_type,
             namespace=args.namespace,
             gpus=args.gpus,
             cpu=args.cpu,
