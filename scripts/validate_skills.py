@@ -27,6 +27,11 @@ SECRET_PATTERNS = (
     re.compile(r"\b(ARIA|WANDB_ARIA_\w+|_wb_agent|ariaActionInput|ARIATriggeredAction)\b"),
     re.compile(r"(request_network_access|wandb_web_page_state|IN_CHAT_PANELS|PDF_GENERATION)"),
     re.compile(r"[\s`'\"(]/workspace/"),
+    re.compile(r"\$(refs|R)\b|product-context/|forge\.coreweave\.com/api"),
+)
+
+LOCAL_PATH_PATTERN = re.compile(
+    r"(?<![\w/.-])((?:skills/[\w-]+/)?(?:references|scripts)/[\w./-]+?\.(?:md|py))"
 )
 
 STALE_REPORT_PATTERNS = (
@@ -93,6 +98,13 @@ def main() -> int:
                 if pattern.search(text):
                     offenders.append(
                         f"{path.relative_to(root)}: matched {pattern.pattern}"
+                    )
+            skill_dir = skills_root / path.relative_to(skills_root).parts[0]
+            for ref in LOCAL_PATH_PATTERN.findall(text):
+                target = root / ref if ref.startswith("skills/") else skill_dir / ref
+                if not target.exists():
+                    offenders.append(
+                        f"{path.relative_to(root)}: missing referenced file {ref}"
                     )
             for pattern in STALE_REPORT_PATTERNS:
                 if pattern.search(text):

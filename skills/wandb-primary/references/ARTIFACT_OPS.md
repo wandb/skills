@@ -20,10 +20,10 @@ H=skills/wandb-primary/scripts/artifact_helpers.py
 | Need | Use |
 |---|---|
 | One known version, lineage, or download | `api.artifact("ENTITY/PROJECT/NAME:vN")` |
-| Project type/collection shape | `python "$R" artifact-inventory --entity E --project P` |
+| Project type/collection shape | `python skills/wandb-primary/scripts/wandb_run_ops.py artifact-inventory --entity E --project P` |
 | Filter/rank versions by size, age, type, alias, or tag | `python "$H" versions --entity E --project P ...` |
-| Summarize selected manifest entries and bounded file contents | `python "$R" artifact-file-summary ...` |
-| Locate checkpoint outputs for selected runs | `python "$R" checkpoint-locations ...` |
+| Summarize selected manifest entries and bounded file contents | `python skills/wandb-primary/scripts/wandb_run_ops.py artifact-file-summary ...` |
+| Locate checkpoint outputs for selected runs | `python skills/wandb-primary/scripts/wandb_run_ops.py checkpoint-locations ...` |
 | Delete or change TTL | Confirm first, then use the SDK mechanics in `WANDB_CONCEPTS.md` |
 
 ## Scale posture
@@ -41,12 +41,12 @@ H=skills/wandb-primary/scripts/artifact_helpers.py
 ## Helper recipes
 
 ```bash
-uv run python "$R" artifact-inventory --entity E --project P
+uv run python skills/wandb-primary/scripts/wandb_run_ops.py artifact-inventory --entity E --project P
 uv run python "$H" versions --entity E --project P \
   --type model --order=-size --limit 50 --scan-limit 500
-uv run python "$R" artifact-file-summary --entity E --project P \
+uv run python skills/wandb-primary/scripts/wandb_run_ops.py artifact-file-summary --entity E --project P \
   --artifact NAME:VERSION --file-regex 'metrics|manifest' --max-files 10
-uv run python "$R" checkpoint-locations --entity E --project P \
+uv run python skills/wandb-primary/scripts/wandb_run_ops.py checkpoint-locations --entity E --project P \
   --run-name-include TOKEN
 ```
 

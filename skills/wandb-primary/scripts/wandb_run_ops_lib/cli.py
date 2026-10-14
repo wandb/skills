@@ -18,9 +18,9 @@ from wandb_helpers import DEFAULT_AGGREGATE_NAMED_SWEEPS_LIMIT
 DESCRIPTION = "Low-latency W&B run-table, artifact, history, and project-inspection helpers."
 TOP_LEVEL_EPILOG = """\
 Canonical grammar:
-  python $R COMMAND --entity ENTITY --project PROJECT [command flags]
-  python $R large-project --entity ENTITY --project PROJECT --recipe RECIPE [recipe flags]
-  python $R COMMAND --help
+  python skills/wandb-primary/scripts/wandb_run_ops.py COMMAND --entity ENTITY --project PROJECT [command flags]
+  python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity ENTITY --project PROJECT --recipe RECIPE [recipe flags]
+  python skills/wandb-primary/scripts/wandb_run_ops.py COMMAND --help
 
 Common recipes:
   count-runs      --state finished
@@ -89,55 +89,55 @@ def _split_values(values: list[str] | None) -> list[str]:
 
 
 def _command_help(command: str) -> str:
-    return f"Run: python $R {command} --help"
+    return f"Run: python skills/wandb-primary/scripts/wandb_run_ops.py {command} --help"
 
 
 COMMAND_EPILOGS = {
     "count-runs": """\
 Canonical examples:
-  python $R count-runs --entity ENTITY --project PROJECT
-  python $R count-runs --entity ENTITY --project PROJECT --state finished
-  python $R count-runs --entity ENTITY --project PROJECT --by-sweep
+  python skills/wandb-primary/scripts/wandb_run_ops.py count-runs --entity ENTITY --project PROJECT
+  python skills/wandb-primary/scripts/wandb_run_ops.py count-runs --entity ENTITY --project PROJECT --state finished
+  python skills/wandb-primary/scripts/wandb_run_ops.py count-runs --entity ENTITY --project PROJECT --by-sweep
 """,
     "aggregate-named-sweeps": """\
 Canonical examples:
-  python $R aggregate-named-sweeps --entity ENTITY --project PROJECT --sweep-name medium-sweep-a --sweep-name medium-sweep-b --metric city_rmse --metric global_rmse
-  python $R aggregate-named-sweeps --entity ENTITY --project PROJECT --sweep-name sweep-a,sweep-b --metric loss
+  python skills/wandb-primary/scripts/wandb_run_ops.py aggregate-named-sweeps --entity ENTITY --project PROJECT --sweep-name medium-sweep-a --sweep-name medium-sweep-b --metric city_rmse --metric global_rmse
+  python skills/wandb-primary/scripts/wandb_run_ops.py aggregate-named-sweeps --entity ENTITY --project PROJECT --sweep-name sweep-a,sweep-b --metric loss
 """,
     "inspect-schema": """\
 Canonical examples:
-  python $R inspect-schema --entity ENTITY --project PROJECT --schema both --sample 50
-  python $R inspect-schema --entity ENTITY --project PROJECT --schema summary --order=-created_at
-  python $R inspect-schema --entity ENTITY --project PROJECT --distinct-values CONFIG_KEY --sample 50
+  python skills/wandb-primary/scripts/wandb_run_ops.py inspect-schema --entity ENTITY --project PROJECT --schema both --sample 50
+  python skills/wandb-primary/scripts/wandb_run_ops.py inspect-schema --entity ENTITY --project PROJECT --schema summary --order=-created_at
+  python skills/wandb-primary/scripts/wandb_run_ops.py inspect-schema --entity ENTITY --project PROJECT --distinct-values CONFIG_KEY --sample 50
 Use rank-runs --show-hparams for likely hyperparameter keys.
 """,
     "name-patterns": """\
 Canonical examples:
-  python $R name-patterns --entity ENTITY --project PROJECT --sample 100
-  python $R name-patterns --entity ENTITY --project PROJECT --name-prefix PREFIX
-  python $R name-patterns --entity ENTITY --project PROJECT --name-regex REGEX
+  python skills/wandb-primary/scripts/wandb_run_ops.py name-patterns --entity ENTITY --project PROJECT --sample 100
+  python skills/wandb-primary/scripts/wandb_run_ops.py name-patterns --entity ENTITY --project PROJECT --name-prefix PREFIX
+  python skills/wandb-primary/scripts/wandb_run_ops.py name-patterns --entity ENTITY --project PROJECT --name-regex REGEX
 """,
     "rank-runs": """\
 Canonical examples:
-  python $R rank-runs --entity ENTITY --project PROJECT --metric METRIC --direction max --limit 10
-  python $R rank-runs --entity ENTITY --project PROJECT --latest --limit 5
-  python $R rank-runs --entity ENTITY --project PROJECT --metric METRIC --direction min --limit 1 --show-hparams
-  python $R rank-runs --entity ENTITY --project PROJECT --metric METRIC --direction max --limit 1 --config-eq CONFIG_KEY=VALUE --answer
+  python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity ENTITY --project PROJECT --metric METRIC --direction max --limit 10
+  python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity ENTITY --project PROJECT --latest --limit 5
+  python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity ENTITY --project PROJECT --metric METRIC --direction min --limit 1 --show-hparams
+  python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity ENTITY --project PROJECT --metric METRIC --direction max --limit 1 --config-eq CONFIG_KEY=VALUE --answer
 Use --direction max|min, --limit for rows, and --sample for metric-hint discovery.
 Repeat --config-eq for multiple scalar config filters (server-side).
 """,
     "workspace-views": """\
 Canonical examples:
-  python $R workspace-views --entity ENTITY --project PROJECT
-  python $R workspace-views --view-url 'https://wandb.ai/ENTITY/PROJECT?nw=TOKEN'
+  python skills/wandb-primary/scripts/wandb_run_ops.py workspace-views --entity ENTITY --project PROJECT
+  python skills/wandb-primary/scripts/wandb_run_ops.py workspace-views --view-url 'https://wandb.ai/ENTITY/PROJECT?nw=TOKEN'
 """,
     "large-project": """\
 Canonical examples:
-  python $R large-project --entity ENTITY --project PROJECT --recipe status
-  python $R large-project --entity ENTITY --project PROJECT --recipe run-info --run RUN_NAME_OR_ID
-  python $R large-project --entity ENTITY --project PROJECT --recipe recent --sample 10
-Wrong: python $R large-project status --entity ENTITY --project PROJECT
-Right: python $R large-project --entity ENTITY --project PROJECT --recipe status
+  python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity ENTITY --project PROJECT --recipe status
+  python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity ENTITY --project PROJECT --recipe run-info --run RUN_NAME_OR_ID
+  python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity ENTITY --project PROJECT --recipe recent --sample 10
+Wrong: python skills/wandb-primary/scripts/wandb_run_ops.py large-project status --entity ENTITY --project PROJECT
+Right: python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity ENTITY --project PROJECT --recipe status
 """,
 }
 
@@ -145,8 +145,8 @@ Right: python $R large-project --entity ENTITY --project PROJECT --recipe status
 def _command_error_hint(command: str | None) -> str:
     if not command:
         return (
-            "Use: python $R COMMAND --entity ENTITY --project PROJECT [command flags]. "
-            "Run: python $R --help"
+            "Use: python skills/wandb-primary/scripts/wandb_run_ops.py COMMAND --entity ENTITY --project PROJECT [command flags]. "
+            "Run: python skills/wandb-primary/scripts/wandb_run_ops.py --help"
         )
     examples = COMMAND_EPILOGS.get(command)
     if examples:
@@ -484,7 +484,7 @@ def _reject_provided(parser: argparse.ArgumentParser, args: argparse.Namespace, 
 def _canonical_example(command: str, args: argparse.Namespace | None = None) -> str:
     scope = "--entity ENTITY --project PROJECT"
     if command != "large-project":
-        return f"python $R {command} {scope} --help"
+        return f"python skills/wandb-primary/scripts/wandb_run_ops.py {command} {scope} --help"
 
     recipe = getattr(args, "recipe", None) or getattr(args, "op", None) or "status"
     extras = {
@@ -499,7 +499,7 @@ def _canonical_example(command: str, args: argparse.Namespace | None = None) -> 
         "groups": "--sample 500",
         "date-counts": "--month YYYY-MM",
     }.get(recipe, "")
-    return f"python $R large-project {scope} --recipe {recipe}" + (f" {extras}" if extras else "")
+    return f"python skills/wandb-primary/scripts/wandb_run_ops.py large-project {scope} --recipe {recipe}" + (f" {extras}" if extras else "")
 
 
 def _valid_flags_text(flags: set[str]) -> str:
@@ -612,7 +612,7 @@ def _validate_large_project(parser: argparse.ArgumentParser, args: argparse.Name
             f"large-project --recipe {selected} does not use {', '.join(invalid)}. "
             f"Valid flags: {_valid_flags_text(allowed)}. "
             f"Try: {_canonical_example('large-project', args)}. "
-            "Run: python $R large-project --help"
+            "Run: python skills/wandb-primary/scripts/wandb_run_ops.py large-project --help"
         )
     for pattern in getattr(args, "name_regex", []) or []:
         _validate_regex(parser, pattern, "--name-regex pattern")
@@ -661,7 +661,7 @@ class RunOpsArgumentParser(argparse.ArgumentParser):
         if recipe := _large_project_positional_recipe(raw_args):
             self.error(
                 "large-project recipes must be passed with --recipe. "
-                f"Wrong: python $R {' '.join(raw_args)}. "
+                f"Wrong: python skills/wandb-primary/scripts/wandb_run_ops.py {' '.join(raw_args)}. "
                 f"Right: {_canonical_example('large-project', argparse.Namespace(recipe=recipe, op=None))}"
             )
         normalized = _normalize_large_project_recipe_alias(raw_args)

@@ -18,20 +18,17 @@ how you query it, so settle that before writing code.
 | Plane | Holds | Your access |
 |---|---|---|
 | **Weave Agents plane** | conversations, turns, spans, tools, models, tokens, cost, latency, errors, custom attributes | **the SDK** — `client.server.agent_*` |
-| **Agent Lens service** | Insights categories and clusters, the Insights summary, tags and their judges, human-applied conversation tags, saved views | **its HTTP API** at `https://forge.coreweave.com/api/pulse` with the W&B API key (see "The service API" below) |
+| **Agent Lens service** | Insights categories and clusters, the Insights summary, tags and their judges, human-applied conversation tags, saved views | the Agent Lens UI |
 
 The Agents plane is the same data Weave's agents surfaces show, so
 `skills/wandb-primary/references/WEAVE_SDK.md` and `scripts/weave_agent_ops.py` apply
 unchanged. Ingestion is OTel: a project can hold Agents-plane spans and zero
 Weave Calls, so `client.get_calls()` returning nothing proves nothing here.
 
-The second plane is a separate service with its own HTTP API. Its clustering
-output lives in ClickHouse (`weave_trace_db.signature_cluster_runs`, keyed by
-`project_id`, a `signature_type` of `intent` or `failure`, `status`, and
-`window_start`). The trace server exposes exactly nine `agent_*` methods and
-none reach classifications or tags, and the classifications are **not**
-duplicated into any span field — so anything in this plane comes from the
-service API, not from a span query.
+The second plane is a separate service. The trace server's nine `agent_*`
+methods do not reach classifications or tags, and the classifications are
+**not** duplicated into any span field, so this plane is read in the Agent Lens
+UI, not from a span query.
 
 `is_error` and `status_code` are raw span fields recording whether a span
 failed. They are not the semantic failure categories Insights assigns, which
@@ -179,7 +176,7 @@ selected time range, so those are reproducible. Two are not:
 | Latency | derived `duration_ms` with `percentiles=[50, 95]`, filtered to `invoke_agent` |
 | Tools | `group_by` tool name, using span and error counts |
 | Tools with errors | the same, as a rate rather than a count |
-| Tags, Trending tags | the service API: `POST /conversation-tags/distribution` (see below) |
+| Tags, Trending tags | Agent Lens service only; not reproducible from spans |
 
 A count you produce and a count on the page can differ legitimately: the page
 has a time range, and it counts distinct conversations where a raw span count
@@ -190,9 +187,7 @@ the metric spec — `percentiles=[50, 95]` on a derived `duration_ms` metric.
 The same statistic computed in Python over `agent_spans_query` rows differs in
 two ways: those rows are capped by `limit`, so the result describes a sample of
 the match rather than all of it, and on a busy project the fetch is large
-enough to run into the shell's time limit. A week of `wandb-agent-dev` is a few
-hundred `invoke_agent` spans; the same week of `wandb-agent-prod` is over
-18,000.
+enough to time out.
 
 ## Reading the Insights numbers you cannot compute
 
@@ -221,36 +216,7 @@ it as the cluster's within-category fraction multiplied by the category's own
 percentage, so cluster figures under one category sum to that category's
 percent rather than to 100.
 
-## The service API
-
-Base URL `https://forge.coreweave.com/api/pulse`.
-Authentication is `Authorization: Bearer <W&B API key>`; read the key from the
-`WANDB_API_KEY` environment variable and never print it. The project goes in `x-wandb-entity` and
-`x-wandb-project` headers; the caller's own project permissions apply, so a
-project the user cannot read returns `403`, and a missing or invalid key `401`.
-Responses are JSON with the payload under `data`. The inventory is what backs
-each surface:
-
-| Area | Endpoints |
-|---|---|
-| Insights | `GET /insights/latest-week` · `GET /insights/intent-category-breakdowns?date=` (serves both views despite the name) · `POST /insights/executive-summary` · `GET /insights/{intent\|failure}/categories/{id}/example-turns` · `GET /insights/matching-turns` · `POST /insights/conversations/search` |
-| Tags | `GET/POST /tags` · `GET/PATCH/DELETE /tags/{id}` · `POST /tags/{id}/test` · `GET/POST /tags/{id}/alignment_examples` · `PATCH/DELETE /tags/{tag_id}/alignment_examples/{example_id}` |
-| Conversation tags | `POST /conversation-tags/query` · `POST /conversation-tags/conversations/query` · `POST /conversation-tags/distribution` · `GET/POST/DELETE /conversation-tags` |
-| Saved views | `GET/POST /views` · `PATCH/DELETE /views/{id}` |
-| Other | `GET /models` · `POST /conversations/{id}/summarize` · `GET /users/me` · `GET /users/me/teams` |
-
-The Tags page merges two of these. `GET /tags` returns the **configured** tags
-— `id`, `name`, `criteria`, `color`, `llm_judge_enabled`, `agent_name_filter`,
-`inserted_at`, `updated_at` — and `GET /conversation-tags` returns the names of
-tags people have applied to conversations by hand, which is where a row with no
-criteria comes from. A tag is listed once whichever source it came from, so the
-page's row count is the union. Conversation counts and last-used times come
-from `POST /conversation-tags/distribution`, whose body requires `after_ms`,
-`before_ms` and `time_bucket_seconds`; it is also what fills the Overview's tag
-cards, which is why those two can be empty while conversations are not.
-`/tags/{id}/test` alongside `/tags/{id}/alignment_examples` says a tag is a
-judge with an alignment set behind it, not a saved string — so "why did this
-tag fire" is a question about criteria and alignment, not about a filter.
+## From the page back to spans
 
 The bridge back to your plane: an Insights drill-down resolves to
 `conversation_id` and `trace_id`. Once the user gives you an ID from the page,
@@ -289,4 +255,3 @@ nothing that separates the last two from each other.
 ## Related
 - The Agents plane in depth: `skills/wandb-primary/references/WEAVE_SDK.md`
 - Transcripts and pagination: `skills/wandb-primary/scripts/weave_agent_ops.py`
-- What each page shows: `product-context/pages/agent-lens-overview.md` and siblings
