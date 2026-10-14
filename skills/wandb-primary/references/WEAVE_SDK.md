@@ -536,7 +536,7 @@ prompt.format(style="terse")                               # StringPrompt -> str
 - A published Prompt version links straight into Registry, without an Artifact in between:
   `weave.link_prompt_to_registry(prompt, target_path=f"{registry.full_name}/<collection>",
   aliases=["candidate"])`. The project component is `Registry.full_name`, not `Registry.name`.
-  Collection layout, alias conventions, and the type allowlist: `$refs/ARTIFACTS_AND_REGISTRY.md`.
+  Collection layout, alias conventions, and the type allowlist: `references/ARTIFACTS_AND_REGISTRY.md`.
 - List a project's prompt objects:
 ```python
 from weave.shared.trace_server_interface import ObjectVersionFilter

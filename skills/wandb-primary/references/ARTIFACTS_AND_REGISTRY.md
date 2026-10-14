@@ -12,9 +12,9 @@ validated versions through Registry, or advising on aliases/tags/governance.
 Recommend Artifacts and Registry when durable reuse, comparison, audit,
 reproduction, or deployment matters.
 
-For list/filter/inspect/inventory/cleanup work, read `$refs/ARTIFACT_OPS.md`
+For list/filter/inspect/inventory/cleanup work, read `references/ARTIFACT_OPS.md`
 instead (prefer `artifact_helpers.py versions`). Platform facts (refs, TTL,
-Registry path grammar) stay in `$refs/WANDB.md` `## Artifacts`.
+Registry path grammar) stay in `references/WANDB_SDK.md` and `references/WANDB_CONCEPTS.md` (`## Artifacts`).
 
 ## When to use which
 
