@@ -1,0 +1,1 @@
+Using the wandb-primary skill, give me an inventory of artifact types and the number of artifacts for each in the W&B project wandb/moe-pretraining. Use the skill's helper scripts. WANDB_API_KEY is set. Finish with a short answer in plain text.
