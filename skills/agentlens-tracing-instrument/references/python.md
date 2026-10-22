@@ -1,8 +1,15 @@
+<!--
+SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
+SPDX-License-Identifier: Apache-2.0
+SPDX-PackageName: skills
+-->
+
 # Python
 
 Apply [trace fidelity](trace_fidelity.md) when replacing the synthetic calls below.
 
-`coreweave-forge-sdk` supports Python >=3.9. `tracing.init("entity/project")`
+The published package is `coreweave` and supports Python >=3.10. Install it
+with `pip install --pre coreweave`. `tracing.init("entity/project")`
 accepts `api_key`/`base_url`; defaults use `WANDB_API_KEY`, `WF_TRACE_SERVER_URL`,
 `WANDB_BASE_URL`, and a `.netrc` key fallback. This synthetic example makes no
 model call; use an intended destination or local exporter:

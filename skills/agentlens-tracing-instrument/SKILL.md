@@ -1,12 +1,20 @@
 ---
 name: agentlens-tracing-instrument
-description: Add Forge AgentLens tracing to Python or TypeScript agents. Use when asked to trace agent turns, model calls, tools, or subagents with Forge or AgentLens.
+description: Add CoreWeave Agent Lens tracing to Python or TypeScript agents. Use when asked to trace agent turns, model calls, tools, or subagents with Forge or Agent Lens.
 ---
 
-# Forge AgentLens instrumentation
+<!--
+SPDX-FileCopyrightText: 2026 CoreWeave, Inc.
+SPDX-License-Identifier: Apache-2.0
+SPDX-PackageName: skills
+-->
+
+# CoreWeave Agent Lens instrumentation
 
 Complete the [login check](#check-login-first) before editing or initializing.
 If no valid login exists, send only that section's reply and stop.
+
+Choose the matching [Agent Lens integration guide](https://docs.coreweave.com/products/agent-lens/get-started/integrations) before adding instrumentation. Use this skill for explicit agent spans; supported framework and harness integrations may require a different SDK or plugin.
 
 Forge exports explicit agent spans through a private OTel provider. It does
 not auto-instrument frameworks, replace the global provider, or export that
@@ -34,7 +42,7 @@ documentation links:
 
 There's no W&B login yet, so this stops here. Open a new terminal tab and run
 `wandb login --verify`. Create an API key at
-https://wandb.ai/authorize?ref=models. If the browser opens a different page,
+https://forge.coreweave.com/settings#apikeys. If the browser opens a different page,
 open that link again. Paste the key in that terminal, not here, and type
 continue.
 
