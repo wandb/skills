@@ -72,6 +72,7 @@ application dependencies or credentials. These bundles are exported from Core.
 | [`wandb-primary`](skills/wandb-primary/) | Broad W&B project analysis and operations across runs, Artifacts, Registry, Weave, Reports, Workspaces, Automations, Sweeps, Launch, and Agent Lens. | experimental |
 | [`wandb-eval-tables`](skills/wandb-eval-tables/) | Non-destructive conversion of W&B Table artifacts into bounded, verified EvalTable previews. | experimental |
 | [`wandb-autoresearch`](skills/wandb-autoresearch/) | Bounded training research through W&B Launch, including readiness checks, serial trials, comparison, and resumable state. | experimental |
+| [`wandb-leet`](skills/wandb-leet/) | Run inspection from a coding agent with the `wandb leet` JSON commands and the `wandb mcp` server: runs, metric series, summaries, console logs, and system metrics, locally or by W&B URL. | experimental |
 | [`weave-instrument`](skills/weave-instrument/) | Weave SDK tracing for Python and TypeScript agents and LLM applications. | experimental |
 | [`agentlens-tracing-instrument`](skills/agentlens-tracing-instrument/) | Forge AgentLens tracing for Python and TypeScript agents. | experimental |
 <!-- END SKILL TABLE -->
