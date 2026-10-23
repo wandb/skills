@@ -105,6 +105,24 @@ python3 -m skillbench.cli plan \
 
 *Pass rates are +/- 3%. Many tasks span multiple categories.
 
+### Instrumenting a real service
+
+[![weave-instrument · codex](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/weave-instrument-codex.json&label=weave-instrument%20%C2%B7%20codex)](#instrumenting-a-real-service)
+[![weave-instrument · claude-code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wandb/skills/main/.badges/weave-instrument-claude-code.json&label=weave-instrument%20%C2%B7%20claude-code)](#instrumenting-a-real-service)
+
+`weave-instrument` is also measured on a real codebase. A coding agent gets W&B's own
+agent service with its Weave tracing removed, plus this skill, and has to add the tracing
+back. A trial passes when live traffic through the instrumented service produces a
+correct trace and the service still works:
+
+- one root span per turn, with a span for every LLM call and tool call
+- the service's tests and lint pass
+- every turn completes with tracing off, and with the trace server unreachable
+
+The badges show trials passed out of trials that produced a change, for Codex
+(`gpt-5.6-sol`) and Claude Code (`claude-opus-5-5`). W&B Agent Factory's repo
+instrumentation eval runs the trials and writes the badge files in `.badges/`.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
