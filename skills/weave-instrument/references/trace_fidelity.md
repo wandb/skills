@@ -41,7 +41,9 @@ Use code and actual request/response records; ask when ownership is unclear.
   report that gap; do not recreate synthetic execution spans to fill it.
 - Preserve available exit codes, structured error results, and attempt identity
   when converting tool results to receipt events. Map outcomes using the tool
-  contract; missing status is **unknown**, not success.
+  contract; missing status is **unknown**, not success. If the contract keeps
+  timeouts or cancellation apart from errors, record them as attributes and set
+  error status only for what it calls an error.
 - Attribute failures to original attempts. Preserve retries and real duplicate
   executions; never deduplicate by error text. Missing provenance means uncertain
   attribution.
@@ -92,6 +94,21 @@ Use code and actual request/response records; ask when ownership is unclear.
 Test the real instrumentation/serializer with an in-memory exporter or local
 OTLP receiver. Use independently recorded provider responses, execution events,
 and deliveries as ground truth, not the exported spans themselves.
+
+Always assert, through the real code path and for every model path the
+application has:
+- each turn root's last user message is the user's prompt text;
+- every `chat` span has input messages, output messages, and input and output
+  token counts equal to the provider response's. Drive the client the
+  application actually constructs (including any proxy or wrapper) with a
+  recorded response, not a fake that yields the provider SDK's own classes,
+  and not by calling your recording helper;
+- a model stream that raises midway leaves an error `chat` span, also when
+  the application catches the error and retries, and one the caller stops
+  reading early leaves a non-error span with what arrived;
+- every `execute_tool` span has the provider tool-call ID, arguments, result,
+  and the status the tool contract implies;
+- startup and a full request succeed with the trace server unreachable.
 
 Cover applicable cases:
 - **Turns:** two submissions with identical text; multiple model calls and a
