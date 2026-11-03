@@ -4,7 +4,7 @@ Verify these against the installed Weave version and actual emitted spans.
 
 | Condition | Action |
 | --- | --- |
-| Any patched LLM client (OpenAI, LiteLLM, Anthropic, and similar) | These integrations log flat Calls, not `chat` agent spans, even inside a Session SDK turn; only integrations with an agent/OTel variant in the installed SDK emit agent spans. Open LLM spans with the Session SDK, and set `WEAVE_IMPLICITLY_PATCH_INTEGRATIONS=false` so the call isn't also logged flat. |
+| Any patched LLM client (OpenAI, LiteLLM, Anthropic, and similar) | These patches record each call as a classic Weave Call (a `weave.op`), not a `chat` span, so the call doesn't appear under the Session SDK turn even when it runs inside one. Only integrations with an OTel variant in the installed SDK, such as the OpenAI Agents SDK and Claude Agent SDK, emit agent spans. Open LLM spans with the Session SDK, and set `WEAVE_IMPLICITLY_PATCH_INTEGRATIONS=false` so the call isn't also recorded as a separate Call. |
 | Python plain `openai`, default `use_otel_v2=True` | Call `weave.integrations.patch_openai()` after init for flat calls, or use Session SDK LLM spans for agent traces. `WEAVE_USE_OTEL_V2=false` is another capture mode. |
 | Python Google ADK | Import ADK before init, or call `patch_google_adk()`; the root-module hook misses a later `google.adk` import. |
 | Existing global `TracerProvider` | Init backs off. Add [Weave export](otel_endpoint.md) to that provider; do not assume init attached an exporter. |

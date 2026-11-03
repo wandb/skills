@@ -80,9 +80,10 @@ and the authorize page that command prints. Still send only that.
   or Node's `integrations/hooks.ts`, then verify emitted spans. Read
   [auto-instrumentation caveats](references/otel_auto.md); registry membership
   alone does not prove capture is active. Avoid duplicate manual wrapping.
-  Patched LLM-client integrations (OpenAI and LiteLLM among them) log flat
-  Calls, not `chat` spans under a Session SDK turn. If turns come from the
-  Session SDK, open LLM spans with it too and disable implicit patching
+  Patched LLM-client integrations (OpenAI and LiteLLM among them) record each
+  call as a classic Weave Call (a `weave.op`), not a `chat` span, so the call
+  doesn't appear under a Session SDK turn. If turns come from the Session SDK,
+  open LLM spans with it too and disable implicit patching
   (`WEAVE_IMPLICITLY_PATCH_INTEGRATIONS=false`) so calls aren't logged twice.
 - **Existing OTel pipeline:** add Weave export to that provider using
   [endpoint configuration](references/otel_endpoint.md).
