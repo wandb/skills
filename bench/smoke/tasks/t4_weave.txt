@@ -1,0 +1,1 @@
+Using the wandb-primary skill, find a W&B project under the entity "wandb" that has Weave traces (try wandb/aria-decision-benchmarks first), list the 3 most recent calls with their op names and durations, and tell me which card in the skill told you how to do it. WANDB_API_KEY is set. Finish with a short answer in plain text.

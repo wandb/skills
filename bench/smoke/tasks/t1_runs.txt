@@ -1,0 +1,1 @@
+Using the wandb-primary skill, tell me how many runs the W&B project wandb/moe-pretraining has, how many finished and how many crashed, and name the run with the lowest final "loss" if there is one. Use the skill's helper scripts rather than writing your own queries. WANDB_API_KEY is set. Finish with a short answer in plain text.

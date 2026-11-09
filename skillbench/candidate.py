@@ -38,6 +38,7 @@ ALLOWED_ROOTS = (
     "skills/",
     "bench/",
     "skillbench/",
+    "tests/",
     "scripts/validate_skills.py",
     ".github/workflows/validate-skills.yaml",
     ".github/workflows/skillbench-plan.yaml",
