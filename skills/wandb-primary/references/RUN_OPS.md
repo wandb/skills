@@ -14,9 +14,9 @@ Use these exact shapes first. The helper is intentionally command-scoped:
 flags that work on one subcommand are not automatically valid on another.
 
 ```bash
-python $R COMMAND --entity ENTITY --project PROJECT [command flags]
-python $R large-project --entity ENTITY --project PROJECT --recipe RECIPE [recipe flags]
-python $R COMMAND --help
+python skills/wandb-primary/scripts/wandb_run_ops.py COMMAND --entity ENTITY --project PROJECT [command flags]
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity ENTITY --project PROJECT --recipe RECIPE [recipe flags]
+python skills/wandb-primary/scripts/wandb_run_ops.py COMMAND --help
 ```
 
 Project scope is `--entity ENTITY --project PROJECT`. If those are omitted,
@@ -27,17 +27,17 @@ For `large-project`, the recipe is a flag, not a positional subcommand:
 
 ```bash
 # Right
-python $R large-project --entity ENTITY --project PROJECT --recipe status
-python $R large-project --entity ENTITY --project PROJECT --recipe run-info --run RUN_NAME_OR_ID
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity ENTITY --project PROJECT --recipe status
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity ENTITY --project PROJECT --recipe run-info --run RUN_NAME_OR_ID
 
 # Wrong
-python $R large-project status --entity ENTITY --project PROJECT
-python $R large-project run-info --entity ENTITY --project PROJECT --run RUN_NAME_OR_ID
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project status --entity ENTITY --project PROJECT
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project run-info --entity ENTITY --project PROJECT --run RUN_NAME_OR_ID
 ```
 
 For order values that start with `-`, use the portable equals form
 (`--order=-created_at`, `--order=-summary_metrics.accuracy`); the helper also
-normalizes the common `--order -created_at` form. `python $R <subcommand>
+normalizes the common `--order -created_at` form. `python skills/wandb-primary/scripts/wandb_run_ops.py <subcommand>
 --help` is the authoritative flag reference, and parser errors print a
 canonical recovery example when a command-specific flag is rejected.
 
@@ -45,29 +45,29 @@ canonical recovery example when a command-specific flag is rejected.
 
 | Need | Canonical command shape |
 |---|---|
-| count runs | `python $R count-runs --entity E --project P [--state finished]` |
-| count by sweep/group | `python $R count-runs --entity E --project P --by-sweep` or `--by-group --include-ungrouped` |
-| per-sweep metric stats for named sweeps | `python $R aggregate-named-sweeps --entity E --project P --sweep-name SWEEP_A --sweep-name SWEEP_B --metric METRIC` |
-| project overview | `python $R project-snapshot --entity E --project P --sample 12` |
-| schema / metric / config keys | `python $R inspect-schema --entity E --project P --schema both --sample 50` |
-| config value vocabulary | `python $R inspect-schema --entity E --project P --distinct-values CONFIG_KEY --sample 50` |
-| run-name vocabulary | `python $R name-patterns --entity E --project P --sample 100` |
-| rank runs by metric | `python $R rank-runs --entity E --project P --metric METRIC --direction max --limit 10` |
-| top-1 run for a config value | `python $R rank-runs --entity E --project P --metric METRIC --direction max --limit 1 --config-eq CONFIG_KEY=VALUE --answer` |
-| latest run | `python $R rank-runs --entity E --project P --latest --limit 1` |
-| likely hparams for winner | `python $R rank-runs --entity E --project P --metric METRIC --direction min --limit 1 --show-hparams` |
-| one run details | `python $R large-project --entity E --project P --recipe run-info --run RUN_NAME_OR_ID` |
-| large project status | `python $R large-project --entity E --project P --recipe status` |
-| recent/crashed rows | `python $R large-project --entity E --project P --recipe recent --sample 10` or `--recipe latest-crashed` |
-| config/summary sample | `python $R large-project --entity E --project P --recipe run-config --config-key KEY --sample 20` |
-| workspace views | `python $R workspace-views --entity E --project P` |
-| history/stability | `python $R diagnose-history --entity E --project P --metric METRIC --sample 60 --history-samples 80` |
+| count runs | `python skills/wandb-primary/scripts/wandb_run_ops.py count-runs --entity E --project P [--state finished]` |
+| count by sweep/group | `python skills/wandb-primary/scripts/wandb_run_ops.py count-runs --entity E --project P --by-sweep` or `--by-group --include-ungrouped` |
+| per-sweep metric stats for named sweeps | `python skills/wandb-primary/scripts/wandb_run_ops.py aggregate-named-sweeps --entity E --project P --sweep-name SWEEP_A --sweep-name SWEEP_B --metric METRIC` |
+| project overview | `python skills/wandb-primary/scripts/wandb_run_ops.py project-snapshot --entity E --project P --sample 12` |
+| schema / metric / config keys | `python skills/wandb-primary/scripts/wandb_run_ops.py inspect-schema --entity E --project P --schema both --sample 50` |
+| config value vocabulary | `python skills/wandb-primary/scripts/wandb_run_ops.py inspect-schema --entity E --project P --distinct-values CONFIG_KEY --sample 50` |
+| run-name vocabulary | `python skills/wandb-primary/scripts/wandb_run_ops.py name-patterns --entity E --project P --sample 100` |
+| rank runs by metric | `python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity E --project P --metric METRIC --direction max --limit 10` |
+| top-1 run for a config value | `python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity E --project P --metric METRIC --direction max --limit 1 --config-eq CONFIG_KEY=VALUE --answer` |
+| latest run | `python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity E --project P --latest --limit 1` |
+| likely hparams for winner | `python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity E --project P --metric METRIC --direction min --limit 1 --show-hparams` |
+| one run details | `python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe run-info --run RUN_NAME_OR_ID` |
+| large project status | `python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe status` |
+| recent/crashed rows | `python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe recent --sample 10` or `--recipe latest-crashed` |
+| config/summary sample | `python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe run-config --config-key KEY --sample 20` |
+| workspace views | `python skills/wandb-primary/scripts/wandb_run_ops.py workspace-views --entity E --project P` |
+| history/stability | `python skills/wandb-primary/scripts/wandb_run_ops.py diagnose-history --entity E --project P --metric METRIC --sample 60 --history-samples 80` |
 | full project scan in custom Python | `wandb_helpers.fetch_runs(get_api(), "E/P", metric_keys=[...], config_keys=[...], limit=N, jsonl_path="checkpoint.jsonl")` — see `scripts/wandb_helpers.py` |
-| restrict any command above to one sweep | add `--sweep SWEEP_ID`, e.g. `python $R metric-grid --entity E --project P --sweep SWEEP_ID --metric-hint FAMILY --axis CONFIG_AXIS` |
+| restrict any command above to one sweep | add `--sweep SWEEP_ID`, e.g. `python skills/wandb-primary/scripts/wandb_run_ops.py metric-grid --entity E --project P --sweep SWEEP_ID --metric-hint FAMILY --axis CONFIG_AXIS` |
 
 ## CLI flag grammar
 
-Flags are command-scoped: use `python $R <subcommand> --help` before the first
+Flags are command-scoped: use `python skills/wandb-primary/scripts/wandb_run_ops.py <subcommand> --help` before the first
 call to a subcommand if the exact invocation is not shown here.
 
 - Project scope is `--entity ENTITY --project PROJECT`, not `--path`.
@@ -165,9 +165,9 @@ fetched slice only. Resolves sweeps by name via direct lookup or filtered
 ``$in`` query. See `SWEEPS.md` § Sweep-scoped run_ops commands.
 
 ```bash
-python $R project-snapshot --entity E --project P --sample 12          # add --include-weave for Weave counts
-python $R count-runs --entity E --project P --state finished           # exact lazy count; --by-sweep | --by-group --include-ungrouped
-python $R aggregate-named-sweeps --entity E --project P --sweep-name SWEEP_A --sweep-name SWEEP_B --metric METRIC
+python skills/wandb-primary/scripts/wandb_run_ops.py project-snapshot --entity E --project P --sample 12          # add --include-weave for Weave counts
+python skills/wandb-primary/scripts/wandb_run_ops.py count-runs --entity E --project P --state finished           # exact lazy count; --by-sweep | --by-group --include-ungrouped
+python skills/wandb-primary/scripts/wandb_run_ops.py aggregate-named-sweeps --entity E --project P --sweep-name SWEEP_A --sweep-name SWEEP_B --metric METRIC
 ```
 
 ### Bounded metadata recipes
@@ -192,12 +192,12 @@ belongs to a different recipe, choose that recipe or remove the flag.
 | date windows | `date-counts` | `--month` or `--start`/`--end` |
 
 ```bash
-python $R large-project --entity E --project P --recipe status
-python $R large-project --entity E --project P --recipe tag-counts --tag TAG
-python $R large-project --entity E --project P --recipe date-counts --month YYYY-MM
-python $R large-project --entity E --project P --recipe run-info --run RUN_NAME_OR_ID    # display name, W&B id, or unique visible suffix
-python $R large-project --entity E --project P --recipe duration-range --sample 500 # shortest/longest candidate depth, not rows printed
-python $R large-project --entity E --project P --recipe run-config --name-include TOKEN --config-key KEY --sample 20
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe status
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe tag-counts --tag TAG
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe date-counts --month YYYY-MM
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe run-info --run RUN_NAME_OR_ID    # display name, W&B id, or unique visible suffix
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe duration-range --sample 500 # shortest/longest candidate depth, not rows printed
+python skills/wandb-primary/scripts/wandb_run_ops.py large-project --entity E --project P --recipe run-config --name-include TOKEN --config-key KEY --sample 20
 ```
 
 ### Schema discovery
@@ -213,8 +213,8 @@ for `--sample`; use `--order=VALUE` when the value starts with `-`.
 scalars, with their type(s). Never `--metric`-sort by these; they yield NaN.
 
 ```bash
-python $R inspect-schema --entity E --project P --schema both --sample 50 --order=-created_at
-python $R inspect-schema --entity E --project P --distinct-values CONFIG_KEY --sample 50
+python skills/wandb-primary/scripts/wandb_run_ops.py inspect-schema --entity E --project P --schema both --sample 50 --order=-created_at
+python skills/wandb-primary/scripts/wandb_run_ops.py inspect-schema --entity E --project P --distinct-values CONFIG_KEY --sample 50
 ```
 
 ### Run names
@@ -233,7 +233,7 @@ Name filtering is standardized where possible:
 | cohort by name regex | `--cohort label=name_regex:REGEX` |
 
 ```bash
-python $R name-patterns --entity E --project P --name-prefix PREFIX --sample 40
+python skills/wandb-primary/scripts/wandb_run_ops.py name-patterns --entity E --project P --name-prefix PREFIX --sample 40
 ```
 
 ### Rankings and lookups
@@ -253,10 +253,10 @@ server-side W&B config filters before ranking (use this for top-1 per dataset or
 sweep axis value instead of scanning the whole project).
 
 ```bash
-python $R rank-runs --entity E --project P --state finished --metric METRIC --direction max --limit 1 --answer --show-hparams
-python $R rank-runs --entity E --project P --state finished --metric METRIC --direction max --limit 1 --answer --config-key CONFIG_KEY --summary-key SUMMARY_KEY
-python $R rank-runs --entity E --project P --state finished --metric METRIC --direction max --limit 1 --config-eq CONFIG_KEY=VALUE --answer
-python $R rank-runs --entity E --project P --latest --limit 1 --answer
+python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity E --project P --state finished --metric METRIC --direction max --limit 1 --answer --show-hparams
+python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity E --project P --state finished --metric METRIC --direction max --limit 1 --answer --config-key CONFIG_KEY --summary-key SUMMARY_KEY
+python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity E --project P --state finished --metric METRIC --direction max --limit 1 --config-eq CONFIG_KEY=VALUE --answer
+python skills/wandb-primary/scripts/wandb_run_ops.py rank-runs --entity E --project P --latest --limit 1 --answer
 ```
 
 ### Comparisons
@@ -288,11 +288,11 @@ sample. For a specific pair or small set of runs, pass `--run-a A --run-b B`,
 repeat `--run RUN`, or pass `--runs A B ...`; explicit refs are not auto-capped.
 
 ```bash
-python $R variant-analysis --entity E --project P --metric METRIC --variant A --variant B   # --config-key KEY if axis is in config;
+python skills/wandb-primary/scripts/wandb_run_ops.py variant-analysis --entity E --project P --metric METRIC --variant A --variant B   # --config-key KEY if axis is in config;
                                                                                 # --rank-by balanced_mean --stratify-by KEY
-python $R compare-cohorts --entity E --project P --metric-hint FAMILY --cohort baseline=non_sweep --cohort sweep=sweep:any --scan 20
-python $R config-diff --entity E --project P --state finished --sample 100
-python $R config-diff --entity E --project P --run-a RUN_A --run-b RUN_B
+python skills/wandb-primary/scripts/wandb_run_ops.py compare-cohorts --entity E --project P --metric-hint FAMILY --cohort baseline=non_sweep --cohort sweep=sweep:any --scan 20
+python skills/wandb-primary/scripts/wandb_run_ops.py config-diff --entity E --project P --state finished --sample 100
+python skills/wandb-primary/scripts/wandb_run_ops.py config-diff --entity E --project P --run-a RUN_A --run-b RUN_B
 ```
 
 ### Hyperparameter grids
@@ -308,7 +308,7 @@ runs to infer axes/metrics, auto-caps at 150, and prints
 `sample_scope=`/`sample_caveat=`.
 
 ```bash
-python $R metric-grid --entity E --project P --metric-hint FAMILY --axis CONFIG_AXIS --sample 200   # repeat --axis; --config-eq K=V
+python skills/wandb-primary/scripts/wandb_run_ops.py metric-grid --entity E --project P --metric-hint FAMILY --axis CONFIG_AXIS --sample 200   # repeat --axis; --config-eq K=V
 ```
 
 ### Tables
@@ -321,13 +321,13 @@ tables using `--table-hint`, `--label-hint`, `--metric-hint`, `--sort-hint`, and
 runs before table detection. Wrong-mode flags are rejected before any W&B calls.
 
 ```bash
-python $R summary-table --entity E --project P --summary-key KEY --sample 5
-python $R summary-table --entity E --project P --mode snapshot --table-hint HINT --metric-hint FAMILY --sort-hint HINT
+python skills/wandb-primary/scripts/wandb_run_ops.py summary-table --entity E --project P --summary-key KEY --sample 5
+python skills/wandb-primary/scripts/wandb_run_ops.py summary-table --entity E --project P --mode snapshot --table-hint HINT --metric-hint FAMILY --sort-hint HINT
 ```
 
 ### Artifacts and checkpoints
 
-Canonical Artifact ops guidance (list/filter/inspect): `$refs/ARTIFACT_OPS.md`
+Canonical Artifact ops guidance (list/filter/inspect): `references/ARTIFACT_OPS.md`
 and `scripts/artifact_helpers.py` (`versions`).
 
 `artifact-inventory` — lists artifact types, collection counts, and bounded
@@ -341,10 +341,10 @@ summaries, row counts, and sampled rows.
 artifacts for runs matching a name filter.
 
 ```bash
-python $R artifact-inventory --entity E --project P
-python $R artifact-file-summary --entity E --project P --artifact NAME:VERSION    # or --collection-hint HINT --type TYPE;
+python skills/wandb-primary/scripts/wandb_run_ops.py artifact-inventory --entity E --project P
+python skills/wandb-primary/scripts/wandb_run_ops.py artifact-file-summary --entity E --project P --artifact NAME:VERSION    # or --collection-hint HINT --type TYPE;
                                                                       # --file-regex RE --max-files N --sample-rows N
-python $R checkpoint-locations --entity E --project P --run-name-include TOKEN
+python skills/wandb-primary/scripts/wandb_run_ops.py checkpoint-locations --entity E --project P --run-name-include TOKEN
 ```
 
 ### Training history and stability
@@ -379,11 +379,11 @@ auto-caps at 150 runs, and prints `sample_scope=`/`sample_caveat=`. The
 grad-noise metrics.
 
 ```bash
-python $R diagnose-history --entity E --project P --state finished --metric METRIC --sample 60 --history-samples 80 --workers 12
-python $R diagnose-history --entity E --project P --mode gpu --training-like --min-points-for-verdict 50 --history-samples 300
-python $R diagnose-history --entity E --project P --target-run RUN --layer-metrics
-python $R stability-scan --entity E --project P --state finished --sample 40 --history-samples 120 --history-budget-seconds 55
-python $R gradient-noise-summary --entity E --project P --state finished --sample 120
+python skills/wandb-primary/scripts/wandb_run_ops.py diagnose-history --entity E --project P --state finished --metric METRIC --sample 60 --history-samples 80 --workers 12
+python skills/wandb-primary/scripts/wandb_run_ops.py diagnose-history --entity E --project P --mode gpu --training-like --min-points-for-verdict 50 --history-samples 300
+python skills/wandb-primary/scripts/wandb_run_ops.py diagnose-history --entity E --project P --target-run RUN --layer-metrics
+python skills/wandb-primary/scripts/wandb_run_ops.py stability-scan --entity E --project P --state finished --sample 40 --history-samples 120 --history-budget-seconds 55
+python skills/wandb-primary/scripts/wandb_run_ops.py gradient-noise-summary --entity E --project P --state finished --sample 120
 ```
 
 ### Workspace views
@@ -392,6 +392,6 @@ python $R gradient-noise-summary --entity E --project P --state finished --sampl
 counts, and open/pinned state.
 
 ```bash
-python $R workspace-views --entity E --project P
-python $R workspace-views --view-url 'https://wandb.ai/E/P?nw=TOKEN'
+python skills/wandb-primary/scripts/wandb_run_ops.py workspace-views --entity E --project P
+python skills/wandb-primary/scripts/wandb_run_ops.py workspace-views --view-url 'https://wandb.ai/E/P?nw=TOKEN'
 ```

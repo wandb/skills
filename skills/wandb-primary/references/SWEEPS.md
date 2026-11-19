@@ -58,7 +58,7 @@ the progress of runs (running or failed) from the sweep state.
 A sweep may attach prior runs: pre-existing project runs attached at creation (e.g. by
 `copy_sweep`) that feed the optimizer historical observations but never become child runs
 owned by the sweep. **Prior runs are invisible to sweep-scoped run queries**:
-`--sweep SWEEP_ID` on `$R` commands and `filters={"sweep": ...}` match only child runs, so
+`--sweep SWEEP_ID` on `wandb_run_ops.py` commands and `filters={"sweep": ...}` match only child runs, so
 they must be queried separately — read the run names from the sweep's `priorRuns` GraphQL
 field, then fetch those runs by name at the project level.
 
@@ -80,7 +80,7 @@ metric: {name: val_loss, goal: minimize}
 job: my-entity/my-project/train-job:latest
 ```
 
-See `$refs/LAUNCH.md` for queue setup and job creation.
+See `references/LAUNCH.md` for queue setup and job creation.
 
 ## Sweep Scheduler CLI
 `wandb sweep-scheduler` runs a sweep's scheduler loop locally, available on SDK v0.31.
@@ -121,7 +121,7 @@ the run generation by the backend, agent state, and run assignment to agents.
 The agent does not have logs, but issues with the agent surface through individual run logs. The list
 of runs for a specific agent are available in the `Api().Sweep.agent().runs()` call.
 
-Refer to `$refs/RUN_LOGS.md` for reading these log streams.
+Refer to `references/RUN_LOGS.md` for reading these log streams.
 
 ## Analysis
 
@@ -150,7 +150,7 @@ The parameter importance score and correlation score is available with the `para
 ### Sweep-scoped run_ops commands
 
 These `wandb_run_ops.py` subcommands exist for sweep-related questions. See
-`$refs/RUN_OPS.md` for flags and examples.
+`references/RUN_OPS.md` for flags and examples.
 
 **`aggregate-named-sweeps`** — Given explicit sweep display names and metric keys,
 returns one row per sweep: `metric_stats` (mean/stdev over numeric summary
@@ -177,8 +177,8 @@ user-provided sweep names. Exact totals for a known sweep id: `count-runs` with
 
 ### Scoping commands to one sweep
 
-**Analyzing patterns across a sweep's runs.** See `$refs/RUN_OPS.md` for the full command reference. Add
-`--sweep SWEEP_ID` to scope any `$R` (`wandb_run_ops.py`) command that samples runs to just this
+**Analyzing patterns across a sweep's runs.** See `references/RUN_OPS.md` for the full command reference. Add
+`--sweep SWEEP_ID` to scope any `wandb_run_ops.py` command that samples runs to just this
 sweep's runs. **Prefer these helpers over direct use of runs queries from the wandb SDK**
 
 For custom Python beyond what these commands cover, `wandb_helpers.fetch_runs(get_api(), path,
