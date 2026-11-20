@@ -64,7 +64,8 @@ and the authorize page that command prints. Still send only that.
 ## Implement incrementally
 
 Add one traced path at a time: a model call, its tool loop, then delegation or
-concurrency where applicable. After each change, run the path and follow
+concurrency where applicable. After each change, run the path, run the
+[health check](references/read_back.md#run-the-health-check-first), then follow
 [read-back verification](references/read_back.md). Compare emitted and stored
 spans with the actual execution before extending the instrumentation.
 
