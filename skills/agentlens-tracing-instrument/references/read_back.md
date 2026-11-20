@@ -21,7 +21,10 @@ comparison below.
   A filtered check covers the last 7 days. A check without `conversation_id` or
   `trace_id` also needs `start_at` and `end_at` (RFC 3339, at most 7 days apart).
 
-Loop until no rule with `severity: must` has `failing_count > 0`:
+With the MCP tool, loop until `failing_rule_counts.must` is 0; `verdict` stays
+`failing` while `should` rules fail, so it is not the stop signal. With the API,
+loop until no rule with `severity: must` has `failing_count > 0`. After that,
+fix `should` rules if they are cheap.
 
 1. Fix the first failing `must` rule using its `fix` text and failing groups.
 2. Rerun the same test path, then check again.
@@ -30,9 +33,11 @@ Loop until no rule with `severity: must` has `failing_count > 0`:
    `settling` verdict means span rules pass but traces are still open: wait,
    then check again before treating trace rules as passing.
 
-A `no_spans` verdict, a 404, or `span_count: 0` is not a pass. It means no agent
-spans arrived in the checked window: check that the exporter targets
-`/agents/otel/v1/traces`, not `/otel/v1/traces`, and that spans carry
+A `no_spans` verdict, a 404, or `span_count: 0` is not a pass. With the tool,
+follow its `diagnosis`. With the API, a filtered 404 can mean a wrong id or a
+window that misses the run, so first retry without the filter over a window
+covering the run. Only when that also has no spans, check that the exporter
+targets `/agents/otel/v1/traces`, not `/otel/v1/traces`, and that spans carry
 `wandb.entity` and `wandb.project` resource attributes.
 
 When a proxy or gateway records the model call, the app starts the
