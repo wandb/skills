@@ -34,9 +34,10 @@ fix `should` rules if they are cheap.
    then check again before treating trace rules as passing.
 
 A `no_spans` verdict, a 404, or `span_count: 0` is not a pass. With the tool,
-follow its `diagnosis`. With the API, a filtered 404 can mean a wrong id or a
-window that misses the run, so first retry without the filter over a window
-covering the run. Only when that also has no spans, check that the exporter
+follow its `diagnosis`: a filter miss means a wrong id or window, not an
+exporter problem. With the API, a filtered 404 can mean a wrong id or a window
+that misses the run, so first retry without the filter over a window covering
+the run. Only when that also has no spans, check that the exporter
 targets `/agents/otel/v1/traces`, not `/otel/v1/traces`, and that spans carry
 `wandb.entity` and `wandb.project` resource attributes.
 
