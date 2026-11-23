@@ -21,17 +21,18 @@ comparison below.
   A filtered check covers the last 7 days. A check without `conversation_id` or
   `trace_id` also needs `start_at` and `end_at` (RFC 3339, at most 7 days apart).
 
-With the MCP tool, loop until `failing_rule_counts.must` is 0; `verdict` stays
-`failing` while `should` rules fail, so it is not the stop signal. With the API,
-loop until no rule with `severity: must` has `failing_count > 0`. After that,
-fix `should` rules if they are cheap.
+Loop until no `must` rule fails and `unsettled_trace_count` is 0. With the MCP
+tool, that is `failing_rule_counts.must` at 0; with the API, no rule with
+`severity: must` has `failing_count > 0`. Trace rules judge a trace only after
+it has been quiet for 10 minutes, so `must` can read 0 while traces are still
+open. `verdict` is not the stop signal: it stays `failing` while `should` rules
+fail. After that, fix `should` rules if they are cheap.
 
 1. Fix the first failing `must` rule using its `fix` text and failing groups.
 2. Rerun the same test path, then check again.
-3. Span rules update as soon as spans arrive. Trace rules wait until a trace has
-   been quiet for 10 minutes (`unsettled_trace_count`); check those last. A
-   `settling` verdict means span rules pass but traces are still open: wait,
-   then check again before treating trace rules as passing.
+3. Span rules update as soon as spans arrive, so fix those first. While
+   `unsettled_trace_count` is above 0 (`settling` verdict with the tool), wait
+   and check again before treating trace rules as passing.
 
 A `no_spans` verdict, a 404, or `span_count: 0` is not a pass. With the tool,
 follow its `diagnosis`: a filter miss means a wrong id or window, not an
