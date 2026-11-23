@@ -42,10 +42,6 @@ the run. Only when that also has no spans, check that the exporter
 targets `/agents/otel/v1/traces`, not `/otel/v1/traces`, and that spans carry
 `wandb.entity` and `wandb.project` resource attributes.
 
-When a proxy or gateway records the model call, the app starts the
-`invoke_agent` span and sends a `traceparent` header with the request, so the
-gateway's span nests under the turn.
-
 ## Check each increment
 
 - Start with a small synthetic request and one model span. Add a tool loop,

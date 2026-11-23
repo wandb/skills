@@ -21,6 +21,9 @@ Use code and actual request/response records; ask when ownership is unclear.
   SDK context/batch APIs without holding requests open or changing behavior.
   Restore the original turn on continuation; do not start another `invoke_agent`
   root merely because a new server request arrived.
+- **Gateway-recorded model calls:** when a proxy or gateway records the model
+  call, start the `invoke_agent` span in the app and send a `traceparent` header
+  with the request so the gateway's span nests under the turn.
 - **Cross-request option:** persist the originating `trace_id` and root `span_id`
   alongside the application run ID. Parent continuation spans to that root using
   supported context/batch APIs; emit/finalize the root once at delivery, failure,
