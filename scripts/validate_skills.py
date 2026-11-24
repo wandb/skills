@@ -12,6 +12,7 @@ EXPECTED_SKILLS = {
     "agentlens-tracing-instrument",
     "wandb-autoresearch",
     "wandb-eval-tables",
+    "wandb-leet",
     "wandb-primary",
     "weave-instrument",
 }
