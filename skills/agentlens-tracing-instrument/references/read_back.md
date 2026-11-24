@@ -1,5 +1,47 @@
 # Read-back verification
 
+## Run the health check first
+
+Agent Lens checks stored spans against the conventions it depends on and returns
+a ranked list of what to fix. Run it after each test run, before the manual
+comparison below.
+
+- With the W&B MCP server connected, call `diagnose_agent_lens_instrumentation_tool`
+  with `entity_name`, `project_name`, and `conversation_id` set to the test
+  conversation, or `latest`. It returns a `verdict` (`clean`, `settling`,
+  `failing`, or `no_spans`) and only the failing rules, must-fix first.
+- Without it, call the API with the runtime's own credentials:
+
+  ```bash
+  curl -sS -H "Authorization: Bearer $WANDB_API_KEY" \
+    -H "X-Wandb-Entity: ENTITY" -H "X-Wandb-Project: PROJECT" \
+    "https://forge.coreweave.com/api/pulse/instrumentation/health?conversation_id=CONVERSATION_ID"
+  ```
+
+  A filtered check covers the last 7 days. A check without `conversation_id` or
+  `trace_id` also needs `start_at` and `end_at` (RFC 3339, at most 7 days apart).
+
+Loop until no `must` rule fails and `unsettled_trace_count` is 0. With the MCP
+tool, that is `failing_rule_counts.must` at 0; with the API, no rule with
+`severity: must` has `failing_count > 0`. Trace rules judge a trace only after
+it has been quiet for 10 minutes, so `must` can read 0 while traces are still
+open. `verdict` is not the stop signal: it stays `failing` while `should` rules
+fail. After that, fix `should` rules if they are cheap.
+
+1. Fix the first failing `must` rule using its `fix` text and failing groups.
+2. Rerun the same test path, then check again.
+3. Span rules update as soon as spans arrive, so fix those first. While
+   `unsettled_trace_count` is above 0 (`settling` verdict with the tool), wait
+   and check again before treating trace rules as passing.
+
+A `no_spans` verdict, a 404, or `span_count: 0` is not a pass. With the tool,
+follow its `diagnosis`: a filter miss means a wrong id or window, not an
+exporter problem. With the API, a filtered 404 can mean a wrong id or a window
+that misses the run, so first retry without the filter over a window covering
+the run. Only when that also has no spans, check that the exporter
+targets `/agents/otel/v1/traces`, not `/otel/v1/traces`, and that spans carry
+`wandb.entity` and `wandb.project` resource attributes.
+
 ## Check each increment
 
 - Start with a small synthetic request and one model span. Add a tool loop,
